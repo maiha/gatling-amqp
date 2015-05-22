@@ -3,14 +3,14 @@ package io.gatling.amqp.infra
 import akka.actor._
 import com.rabbitmq.client.Channel
 import io.gatling.amqp.config._
-import io.gatling.amqp.data._
+import io.gatling.amqp.infra.AmqpActor.ConnectionClosed
 import pl.project13.scala.rainbow._
 import resource.managed
+
 import scala.util.{Failure, Success}
-import io.gatling.amqp.infra.AmqpActor.ConnectionClosed
 
 abstract class AmqpActor(implicit amqp: AmqpProtocol) extends Actor with ActorLogging {
-  protected lazy val className = getClass().getSimpleName
+  protected lazy val className = getClass.getSimpleName
   protected lazy val conn = amqp.newConnection
   protected var _channel: Option[Channel] = None
 

@@ -1,14 +1,11 @@
 package io.gatling.amqp.config
 
-import io.gatling.core.filter.{ BlackList, Filters, WhiteList }
-import io.gatling.core.session._
-import io.gatling.core.session.el.El
-import io.gatling.amqp._
-
 /**
  * Builder for AmqpProtocol used in DSL
  *
  * @param protocol the protocol being built
+ *
+ * TODO: use Lens, or make it mutable
  */
 case class AmqpProtocolBuilder(protocol: AmqpProtocol) {
   def host(h: String)     = copy(protocol = protocol.copy(connection = protocol.connection.copy(host = h)))

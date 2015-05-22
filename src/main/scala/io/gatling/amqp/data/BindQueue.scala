@@ -6,6 +6,6 @@ case class BindQueue(
   queue      : String,
   routingKey : String = "",
   arguments  : Arguments = DefaultArguments
-) extends AmqpMessage
+) extends AmqpChannelCommand
 
 // TODO: support e2e

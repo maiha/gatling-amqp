@@ -20,7 +20,7 @@ Usage
     .auth("guest", "guest")
     .poolSize(10)
 
-  val scn = scenario("RabbitMQ Publishing").repeat(1000) {
+  val scn = scenario("AMQP Publishing").repeat(1000) {
     exec(
       amqp("Publish")
         .publish("q1", payload = "{foo:1}")
@@ -59,5 +59,5 @@ TODO
 - declare exchanges, queues and bindings in action builder context (to test declaration costs)
 - add 'confirm' action (it's a dialect of RabbitMQ)
     - ex) `exec(amqp.publish("q1", payload).confirm)`
-
-
+- make AmqpConfig immutable
+- make Builder mutable

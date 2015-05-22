@@ -37,7 +37,7 @@ class PublishAction(val next: ActorRef, ctx: ScenarioContext, req: PublishReques
       finishedAt = nowMillis
 
       val timings = ResponseTimings(startedAt, finishedAt, finishedAt, finishedAt)
-      val requestName = "RabbitMQ Publishing"
+      val requestName = "AMQP Publishing"
 
       val sec = (finishedAt - startedAt)/1000.0
       log.debug(s"$toString: timings=$timings ($sec)")

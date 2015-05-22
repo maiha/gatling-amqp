@@ -4,7 +4,6 @@ import akka.actor._
 import akka.routing._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import pl.project13.scala.rainbow._
 
 class AmqpRouter(implicit amqp: AmqpProtocol) extends AmqpActor {
   private var router = Router(RoundRobinRoutingLogic(), Vector[Routee]())

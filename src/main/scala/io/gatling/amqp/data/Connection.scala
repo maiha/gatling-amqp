@@ -9,7 +9,7 @@ case class Connection(
   poolSize: Int      = 3
 ) {
 
-  def validate: Unit = {
+  def validate(): Unit = {
     require(host.nonEmpty    ,  "AMQP host is not set")
     require(port > 0         , s"AMQP port is invalid: $port")
     require(vhost.nonEmpty   ,  "AMQP vhost is not set")
@@ -17,8 +17,4 @@ case class Connection(
     require(password.nonEmpty,  "AMQP password is not set")
     require(poolSize > 0     , s"AMQP connection poolSize is invalid: $poolSize")
   }
-}
-
-object Connection {
-  def default = new Connection
 }

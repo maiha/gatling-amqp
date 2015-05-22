@@ -3,21 +3,17 @@ package io.gatling.amqp.config
 import akka.actor._
 import com.rabbitmq.client.ConnectionFactory
 import com.typesafe.scalalogging.StrictLogging
-
+import io.gatling.amqp.data._
 import io.gatling.core.config.Protocol
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
-import io.gatling.amqp.data._
-import io.gatling.amqp.infra._
-
-import pl.project13.scala.rainbow._
 
 /**
  * Wraps a AMQP protocol configuration
  */
 case class AmqpProtocol(
-  connection: Connection = Connection.default
+  connection: Connection = Connection()
 ) extends Protocol with AmqpVariables with AmqpPreparation with StrictLogging {
 
   /**

@@ -1,10 +1,9 @@
 package io.gatling.amqp
 
-import io.gatling.core.action.builder.ActionBuilder
-import io.gatling.core.session.Expression
 import io.gatling.amqp.check.AmqpCheckSupport
 import io.gatling.amqp.config._
 import io.gatling.amqp.request.builder._
+import io.gatling.core.session.Expression
 
 trait AmqpModule extends AmqpCheckSupport {
 

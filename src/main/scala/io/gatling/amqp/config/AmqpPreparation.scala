@@ -1,25 +1,23 @@
 package io.gatling.amqp.config
 
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.collection.mutable.ArrayBuffer
-import scala.util._
-
 import akka.pattern.ask
 import akka.util.Timeout
-import com.typesafe.scalalogging.StrictLogging
-
 import io.gatling.amqp.data._
 import pl.project13.scala.rainbow._
+
+import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util._
 
 /**
  * preparations for AMQP Server
  */
 trait AmqpPreparation { this: AmqpProtocol =>
-  private val preparings: ArrayBuffer[AmqpMessage] = ArrayBuffer[AmqpMessage]()
+  private val preparings: ArrayBuffer[AmqpChannelCommand] = ArrayBuffer[AmqpChannelCommand]()
   private val prepareTimeout: Timeout = Timeout(3 seconds)
 
-  def prepare(msg: AmqpMessage): Unit = {
+  def prepare(msg: AmqpChannelCommand): Unit = {
     preparings += msg
   }
 

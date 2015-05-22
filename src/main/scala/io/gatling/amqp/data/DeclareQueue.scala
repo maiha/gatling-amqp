@@ -6,4 +6,4 @@ case class DeclareQueue(
   exclusive  : Boolean   = false,
   autoDelete : Boolean   = true,
   arguments  : Arguments = DefaultArguments
-) extends AmqpMessage
+) extends AmqpChannelCommand

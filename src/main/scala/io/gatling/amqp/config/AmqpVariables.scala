@@ -1,7 +1,6 @@
 package io.gatling.amqp.config
 
 import akka.actor._
-import io.gatling.amqp.data._
 import io.gatling.amqp.infra._
 
 /**

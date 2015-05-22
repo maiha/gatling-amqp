@@ -1,12 +1,9 @@
 package io.gatling.amqp.infra
 
-import akka.actor._
-import com.rabbitmq.client.Channel
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import resource.managed
 
-import collection.JavaConversions._
+import scala.collection.JavaConversions._
 
 class AmqpManager(implicit amqp: AmqpProtocol) extends AmqpActor {
   override def receive = {

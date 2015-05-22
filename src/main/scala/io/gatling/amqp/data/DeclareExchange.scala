@@ -6,5 +6,5 @@ case class DeclareExchange(
   durable: Boolean,
   autoDelete: Boolean,
   arguments: Arguments
-) extends AmqpMessage
+) extends AmqpChannelCommand
 
