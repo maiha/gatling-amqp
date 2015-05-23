@@ -7,7 +7,9 @@ case class PublishRequest(
   exchange: Exchange,
   routingKey: String,
   properties: BasicProperties,
-  payload: Array[Byte]
+  payload: Array[Byte],
+  waitAck: Boolean = false,
+  count: Int = 1
 ) extends AmqpRequest {
 
   def withProps[A](b : BasicProperties.Builder => A): PublishRequest = {
@@ -16,9 +18,9 @@ case class PublishRequest(
     copy(properties = builder.build())
   }
 
-  def persistent: PublishRequest = {
-    copy(properties = MessageProperties.MINIMAL_PERSISTENT_BASIC)
-  }
+  def persistent    : PublishRequest = copy(properties = MessageProperties.MINIMAL_PERSISTENT_BASIC)
+  def confirm       : PublishRequest = copy(waitAck = true)
+  def repeat(n: Int): PublishRequest = copy(count = n)
 }
 
 object PublishRequest {

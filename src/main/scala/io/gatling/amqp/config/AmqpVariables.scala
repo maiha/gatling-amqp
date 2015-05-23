@@ -2,6 +2,7 @@ package io.gatling.amqp.config
 
 import akka.actor._
 import io.gatling.amqp.infra._
+import io.gatling.core.result.writer.StatsEngine
 
 /**
  * preparations for AMQP Server
@@ -18,9 +19,9 @@ trait AmqpVariables { this: AmqpProtocol =>
   def manager : ActorRef    = manageOpt.getOrElse{ throw new RuntimeException("manager is not defined yet") }
   def router  : ActorRef    = routerOpt.getOrElse{ throw new RuntimeException("router is not defined yet") }
 
-  protected def setupVariables(system: ActorSystem): Unit = {
+  protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
     systemOpt = Some(system)
-    routerOpt = Some(system.actorOf(Props(new AmqpRouter()(this))))
+    routerOpt = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this))))
     manageOpt = Some(system.actorOf(Props(new AmqpManager()(this))))
   }
 }

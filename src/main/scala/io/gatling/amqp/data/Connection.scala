@@ -6,7 +6,8 @@ case class Connection(
   vhost   : String   = "/",
   user    : String   = "guest",
   password: String   = "guest",
-  poolSize: Int      = 3
+  poolSize: Int      = 3,
+  confirm : Boolean  = false
 ) {
 
   def validate(): Unit = {

@@ -11,7 +11,8 @@ Gatling AMQP support
 Usage
 =====
 
-- see example: src/test/scala/io/gatling/amqp/PublishingSimulation.scala
+- publish (normal)
+
 
 ```
   implicit val amqpProtocol: AmqpProtocol = amqp
@@ -20,15 +21,49 @@ Usage
     .auth("guest", "guest")
     .poolSize(10)
 
-  val scn = scenario("AMQP Publishing").repeat(1000) {
-    exec(
-      amqp("Publish")
-        .publish("q1", payload = "{foo:1}")
-    )
-  }
+  val req = PublishRequest("q1", payload = "{foo:1}")
 
-  setUp(scn.inject(rampUsers(10) over (3 seconds))).protocols(amqpProtocol)
+  val scn = scenario("AMQP Publish").exec(
+    amqp("Publish")
+      .publish(req.repeat(1000))
+  )
+
+  setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
 ```
+
+- publish (with persistent)
+    - PublishRequest.persistent make request DeliveryMode(2)
+    - known issue: persistent reset request's properties
+
+```
+  val req = PublishRequest("q1", payload = "{foo:1}").persistent
+```
+
+- publish (with confirmation)
+    - set "confirmMode()" in protocol that invokes "channel.confirmSelect()"
+    - uknown issue: confirmMode losts last reports due to early termination of StatsWriters
+
+
+```
+  implicit val amqpProtocol: AmqpProtocol = amqp
+    .host("localhost")
+    .port(5672)
+    .auth("guest", "guest")
+    .poolSize(10)
+    .confirmMode()
+
+  val req = PublishRequest("q1", payload = "{foo:1}")
+
+  val scn = scenario("AMQP Publishing(ack)").exec(
+    amqp("Publish")
+      .publish(req.repeat(1000).confirm)
+  ).pause(1)
+
+  setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
+```
+
+- full code: src/test/scala/io/gatling/amqp/PublishingSimulation.scala
+
 
 Run
 ===
@@ -57,7 +92,5 @@ TODO
 
 - declare exchanges, queues and bindings in protocol builder context
 - declare exchanges, queues and bindings in action builder context (to test declaration costs)
-- add 'confirm' action (it's a dialect of RabbitMQ)
-    - ex) `exec(amqp.publish("q1", payload).confirm)`
 - make AmqpConfig immutable
 - make Builder mutable

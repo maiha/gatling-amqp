@@ -38,11 +38,16 @@ case class AmqpProtocol(
   }
 
   /**
+   * Whether is AMQP channel used for confirmation mode? (RabbitMQ feature)
+   */
+  def isConfirmMode: Boolean = connection.confirm
+
+  /**
    * warmUp AMQP protocol (invoked by gatling framework)
    */
   override def warmUp(system: ActorSystem, statsEngine: StatsEngine, throttler: Throttler): Unit = {
     super.warmUp(system, statsEngine, throttler)
-    setupVariables(system)
+    setupVariables(system, statsEngine)
     awaitPreparation()
   }
 

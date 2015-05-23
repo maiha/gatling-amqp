@@ -33,13 +33,17 @@ class PublishActionBuilder(request: PublishRequest)(implicit amqp: AmqpProtocol)
   }
 }
 
-object AmqpRequestBuilder {
-  implicit def toActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol): ActionBuilder = {
+class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol) extends ActionBuilder {
+  def build(system: ActorSystem, next: ActorRef, ctx: ScenarioContext): ActorRef =
     amqpRequestBuilder.build.head match {
-      case req: PublishRequest => new PublishActionBuilder(req)
+      case req: PublishRequest => system.actorOf(Props(new PublishAction(next, ctx, req)))
       case _ => throw new RuntimeException("not implemented yet")
     }
-  }
+}
+
+object AmqpRequestBuilder {
+  implicit def toActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol): ActionBuilder =
+    new AmqpActionBuilder(amqpRequestBuilder)
 
   def apply(requestName: Expression[String]): AmqpRequestBuilder = {
     new AmqpRequestBuilder(requestName)
