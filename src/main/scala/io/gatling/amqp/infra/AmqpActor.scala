@@ -34,6 +34,7 @@ abstract class AmqpActor(implicit amqp: AmqpProtocol) extends Actor with ActorLo
   protected def close(): Unit = {
     _channel.foreach(_.close())
     _channel = None
+    conn.close()
   }
 
   protected def channel: Channel = {
