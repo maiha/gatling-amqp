@@ -1,13 +1,25 @@
 package io.gatling.amqp.data
 
 import com.rabbitmq.client.AMQP.BasicProperties
+import com.rabbitmq.client.MessageProperties
 
 case class PublishRequest(
   exchange: Exchange,
   routingKey: String,
   properties: BasicProperties,
   payload: Array[Byte]
-) extends AmqpRequest
+) extends AmqpRequest {
+
+  def withProps[A](b : BasicProperties.Builder => A): PublishRequest = {
+    val builder = new BasicProperties.Builder()
+    b(builder)
+    copy(properties = builder.build())
+  }
+
+  def persistent: PublishRequest = {
+    copy(properties = MessageProperties.MINIMAL_PERSISTENT_BASIC)
+  }
+}
 
 object PublishRequest {
   def apply(queueName: String, bytes: Array[Byte]): PublishRequest =
