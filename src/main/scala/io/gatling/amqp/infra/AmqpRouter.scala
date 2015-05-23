@@ -5,7 +5,7 @@ import akka.routing._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 
-class AmqpRouter(implicit amqp: AmqpProtocol) extends AmqpActor {
+class AmqpRouter(implicit amqp: AmqpProtocol) extends Actor with Logging {
   private var router = Router(RoundRobinRoutingLogic(), Vector[Routee]())
 
   override def preStart(): Unit = {

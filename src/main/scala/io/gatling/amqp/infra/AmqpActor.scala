@@ -4,26 +4,22 @@ import akka.actor._
 import com.rabbitmq.client.Channel
 import io.gatling.amqp.config._
 import io.gatling.amqp.infra.AmqpActor.ConnectionClosed
-import pl.project13.scala.rainbow._
 import resource.managed
 
 import scala.util.{Failure, Success}
 
-abstract class AmqpActor(implicit amqp: AmqpProtocol) extends Actor with ActorLogging {
-  protected lazy val className = getClass.getSimpleName
+abstract class AmqpActor(implicit amqp: AmqpProtocol) extends Actor with Logging {
   protected lazy val conn = amqp.newConnection
   protected var _channel: Option[Channel] = None
 
   override def preStart(): Unit = {
     super.preStart()
-    log.info(s"amqp: Start actor `$className'".yellow)
     open()
   }
 
   override def postStop(): Unit = {
     close()
-    log.info(s"amqp: Stop actor `$className'".yellow)
-    super.preStart()
+    super.postStop()
   }
 
   protected def open(): Unit = _channel match {
