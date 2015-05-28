@@ -21,7 +21,7 @@ trait AmqpVariables { this: AmqpProtocol =>
 
   protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
     systemOpt = Some(system)
-    routerOpt = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this))))
-    manageOpt = Some(system.actorOf(Props(new AmqpManager()(this))))
+    routerOpt = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this)), "AmqpRouter"))
+    manageOpt = Some(system.actorOf(Props(new AmqpManager()(this)), "AmqpManager"))
   }
 }

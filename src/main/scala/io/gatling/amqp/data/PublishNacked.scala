@@ -1,3 +1,3 @@
 package io.gatling.amqp.data
 
-case class PublishNacked(no: Long, multiple: Boolean)
+case class PublishNacked(no: Int, multiple: Boolean)

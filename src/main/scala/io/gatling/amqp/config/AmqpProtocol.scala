@@ -8,6 +8,7 @@ import io.gatling.core.config.Protocol
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
+import pl.project13.scala.rainbow._
 
 /**
  * Wraps a AMQP protocol configuration
@@ -34,7 +35,7 @@ case class AmqpProtocol(
    * validate variables
    */
   def validate(): Unit = {
-    connection.validate
+    connection.validate()
   }
 
   /**
@@ -55,6 +56,8 @@ case class AmqpProtocol(
    * finalize user session about AMQP (invoked by gatling framework)
    */
   override def userEnd(session: Session): Unit = {
+    logger.info(s"userEnd invoked: $session".yellow)
+//    awaitTermination(session)
     super.userEnd(session)
   }
 

@@ -5,29 +5,31 @@ import akka.routing._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.core.result.writer.StatsEngine
+import pl.project13.scala.rainbow._
 
 class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends Actor with Logging {
   private var router = Router(RoundRobinRoutingLogic(), Vector[Routee]())
 
   override def preStart(): Unit = {
     super.preStart()
-    for(i <- 1 to amqp.connection.poolSize) { addRoutee() }
+    for(i <- 1 to amqp.connection.poolSize) { addRoutee(i) }
   }
 
   def receive: Receive = {
     case m: PublishRequest =>
       router.route(m, sender())
-    case m: InternalPublishRequest =>
+    case m: AmqpPublishEvent =>
+      log.debug(s"Router got: AmqpPublishEvent from ${sender().path}")
       router.route(m, sender())
-    case m: WaitConfirms =>
-      router.route(Broadcast(m), sender())
+    case AwaitTermination(session) =>
+//      router.route(Broadcast(m), sender())
     case Terminated(ref) =>
       router = router.removeRoutee(ref)
-//      addRoutee
   }
 
-  private def addRoutee(): Unit = {
-    val ref = context.actorOf(Props(new AmqpPublisher(statsEngine)))
+  private def addRoutee(i: Int): Unit = {
+    val name = s"amqp-publisher-$i"
+    val ref = context.actorOf(Props(new AmqpPublisher(name, statsEngine)), name)
     context watch ref
     router = router.addRoutee(ref)
   }

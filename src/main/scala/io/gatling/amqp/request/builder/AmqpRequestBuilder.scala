@@ -4,47 +4,29 @@ import akka.actor._
 import io.gatling.amqp.action._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
+import io.gatling.amqp.request._
 import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.session.Expression
 import io.gatling.core.structure.ScenarioContext
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable
 
 // (implicit configuration: GatlingConfiguration)
 class AmqpRequestBuilder(
   requestName: Expression[String],
-  val requests: ArrayBuffer[AmqpRequest] = ArrayBuffer[AmqpRequest]()
+  var _destination: Option[AmqpDestination] = None,
+  val requests: mutable.ArrayBuffer[AmqpRequest] = mutable.ArrayBuffer[AmqpRequest]()
 ) extends Publishable {
+
+  def publishRequest: PublishRequest = requests.headOption match {
+    case Some(req: PublishRequest) => req
+    case _ => throw new RuntimeException("PublishRequest not found")
+  }
+
   def build: Seq[AmqpRequest] = requests.toSeq
 }
 
-/*
-class AmqpRequestActionBuilder(requestBuilder: AmqpRequestBuilder, amqpEngine: AmqpEngine) extends AmqpActionBuilder {
-  def build(system: ActorSystem, next: ActorRef, ctx: ScenarioContext): ActorRef = {
-    val amqpRequest = requestBuilder.build(ctx.protocols.protocol[AmqpProtocol], ctx.throttled)
-    system.actorOf(AmqpRequestAction.props(amqpRequest, amqpEngine, ctx.statsEngine, next), actorName("amqpRequest"))
-  }
-}
- */
-
-class PublishActionBuilder(request: PublishRequest)(implicit amqp: AmqpProtocol) extends ActionBuilder {
-  def build(system: ActorSystem, next: ActorRef, ctx: ScenarioContext): ActorRef = {
-    system.actorOf(Props(new PublishAction(next, ctx, request)))
-  }
-}
-
-class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol) extends ActionBuilder {
-  def build(system: ActorSystem, next: ActorRef, ctx: ScenarioContext): ActorRef =
-    amqpRequestBuilder.build.head match {
-      case req: PublishRequest => system.actorOf(Props(new PublishAction(next, ctx, req)))
-      case _ => throw new RuntimeException("not implemented yet")
-    }
-}
-
 object AmqpRequestBuilder {
-  implicit def toActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol): ActionBuilder =
-    new AmqpActionBuilder(amqpRequestBuilder)
-
   def apply(requestName: Expression[String]): AmqpRequestBuilder = {
     new AmqpRequestBuilder(requestName)
   }

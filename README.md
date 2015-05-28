@@ -23,10 +23,9 @@ Usage
 
   val req = PublishRequest("q1", payload = "{foo:1}")
 
-  val scn = scenario("AMQP Publish").exec(
-    amqp("Publish")
-      .publish(req.repeat(1000))
-  )
+  val scn = scenario("AMQP Publish").repeat(1000) {
+    exec(amqp("Publish").publish(req))
+  }
 
   setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
 ```
@@ -54,10 +53,9 @@ Usage
 
   val req = PublishRequest("q1", payload = "{foo:1}")
 
-  val scn = scenario("AMQP Publishing(ack)").exec(
-    amqp("Publish")
-      .publish(req.repeat(1000).confirm)
-  ).pause(1)
+  val scn = scenario("AMQP Publish(ack)").repeat(1000) {
+    exec(amqp("Publish").publish(req))
+  }.pause(1)
 
   setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
 ```

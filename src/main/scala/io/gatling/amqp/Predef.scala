@@ -5,4 +5,4 @@ package io.gatling.amqp
  * <p>
  * Scenario scripts will import this and generally start interacting with the DSL from the functions exposed here
  */
-object Predef extends AmqpModule
+object Predef extends AmqpDsl

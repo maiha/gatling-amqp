@@ -1,11 +1,14 @@
 package io.gatling.amqp
 
+import io.gatling.amqp.action._
 import io.gatling.amqp.check.AmqpCheckSupport
 import io.gatling.amqp.config._
+import io.gatling.amqp.request._
 import io.gatling.amqp.request.builder._
+import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.session.Expression
 
-trait AmqpModule extends AmqpCheckSupport {
+trait AmqpDsl extends AmqpCheckSupport {
 
   def amqp = new AmqpProtocolBuilder(AmqpProtocol.default)
 
@@ -22,10 +25,10 @@ trait AmqpModule extends AmqpCheckSupport {
    * <p>
    * Simplifies the API somewhat (you can pass the builder reference to the scenario .protocolConfig() method)
    */
-//  implicit def amqpProtocolBuilder2amqpProtocol(builder: AmqpProtocolBuilder): AmqpProtocol = builder.build
+  implicit def amqpProtocolBuilder2amqpProtocol(builder: AmqpProtocolBuilder): AmqpProtocol = builder.build
 
-//  implicit def amqpRequestBuilder2ActionBuilder(builder: AmqpRequestBuilder): ActionBuilder = builder.build()
+  implicit def amqpRequestBuilder2ActionBuilder(builder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol): ActionBuilder = new AmqpActionBuilder(builder)
 
-//  def topic(name: String) = AmqpTopic(name)
-//  def queue(name: String) = AmqpQueue(name)
+  def topic(name: String) = AmqpTopic(name)
+  def queue(name: String) = AmqpQueue(name)
 }
