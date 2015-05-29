@@ -1,9 +1,12 @@
 package io.gatling.amqp.config
 
 import akka.actor._
+import akka.event.EventBus
+import akka.event.LookupClassification
 import com.rabbitmq.client.ConnectionFactory
 import com.typesafe.scalalogging.StrictLogging
 import io.gatling.amqp.data._
+import io.gatling.amqp.event._
 import io.gatling.core.config.Protocol
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.result.writer.StatsEngine
@@ -16,6 +19,7 @@ import pl.project13.scala.rainbow._
 case class AmqpProtocol(
   connection: Connection = Connection()
 ) extends Protocol with AmqpVariables with AmqpPreparation with StrictLogging {
+  val event: AmqpEventBus = new AmqpEventBus()
 
   /**
    * create new AMQP connection
@@ -47,17 +51,18 @@ case class AmqpProtocol(
    * warmUp AMQP protocol (invoked by gatling framework)
    */
   override def warmUp(system: ActorSystem, statsEngine: StatsEngine, throttler: Throttler): Unit = {
+    logger.info("amqp: warmUp start")
     super.warmUp(system, statsEngine, throttler)
     setupVariables(system, statsEngine)
     awaitPreparation()
+    logger.info("amqp: warmUp finished")
   }
 
   /**
    * finalize user session about AMQP (invoked by gatling framework)
    */
   override def userEnd(session: Session): Unit = {
-    logger.info(s"userEnd invoked: $session".yellow)
-//    awaitTermination(session)
+    awaitTerminationFor(session)
     super.userEnd(session)
   }
 

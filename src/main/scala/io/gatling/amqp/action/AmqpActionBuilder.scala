@@ -8,9 +8,7 @@ import io.gatling.core.structure.ScenarioContext
 
 class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol) extends ActionBuilder {
   def build(system: ActorSystem, next: ActorRef, ctx: ScenarioContext): ActorRef = {
-    val statsEngine = ctx.statsEngine
-    val tracker = system.actorOf(AmqpRequestTrackerActor.props(statsEngine), actorName("amqpRequestTracker"))
     val req = amqpRequestBuilder.publishRequest
-    system.actorOf(Props(new AmqpPublishAction(req, tracker, statsEngine, next)), actorName("amqpPublishAction"))
+    system.actorOf(Props(new AmqpPublishAction(req, next)), actorName("AmqpPublishAction"))
   }
 }

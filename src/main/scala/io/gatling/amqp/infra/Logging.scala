@@ -2,9 +2,11 @@ package io.gatling.amqp.infra
 
 import akka.actor._
 import pl.project13.scala.rainbow._
+import com.typesafe.scalalogging.LazyLogging
 
-trait Logging extends Actor with ActorLogging {
+trait Logging extends Actor with LazyLogging {
   protected lazy val className = getClass.getSimpleName
+  protected val log = logger // gap between LazyLogging and ActorLogging
 
   override def preStart(): Unit = {
     super.preStart()

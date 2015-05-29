@@ -2,10 +2,13 @@ package io.gatling.amqp.infra
 
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
+import io.gatling.amqp.event._
+import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.util.TimeHelper.nowMillis
 
 import scala.collection.JavaConversions._
 
-class AmqpManager(implicit amqp: AmqpProtocol) extends AmqpActor {
+class AmqpManage(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends AmqpActor {
   override def receive = {
     case msg@ DeclareExchange(name, tpe, durable, autoDelete, arguments) =>
       log.info(s"Initializing AMQP exchange $name")

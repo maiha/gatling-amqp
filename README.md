@@ -40,7 +40,6 @@ Usage
 
 - publish (with confirmation)
     - set "confirmMode()" in protocol that invokes "channel.confirmSelect()"
-    - uknown issue: confirmMode losts last reports due to early termination of StatsWriters
 
 
 ```
@@ -55,7 +54,7 @@ Usage
 
   val scn = scenario("AMQP Publish(ack)").repeat(1000) {
     exec(amqp("Publish").publish(req))
-  }.pause(1)
+  }
 
   setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
 ```
@@ -75,7 +74,8 @@ Restrictions
 ============
 
 - work in progress
-    - currently only one action can be defined in action builder
+    - only one action can be defined in action builder
+    - support only publish action (TODO: consume)
 
 
 Environment
@@ -90,5 +90,6 @@ TODO
 
 - declare exchanges, queues and bindings in protocol builder context
 - declare exchanges, queues and bindings in action builder context (to test declaration costs)
-- make AmqpConfig immutable
+- make AmqpProtocol immutable
 - make Builder mutable
+- consume action

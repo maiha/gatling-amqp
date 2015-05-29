@@ -11,17 +11,23 @@ trait AmqpVariables { this: AmqpProtocol =>
   /**
    * mutable variables (initialized in warmUp)
    */
-  private var systemOpt: Option[ActorSystem] = None
-  private var manageOpt: Option[ActorRef]    = None
-  private var routerOpt: Option[ActorRef]    = None
+  private var _system: Option[ActorSystem] = None
+  private var _manage: Option[ActorRef]    = None
+  private var _nacker: Option[ActorRef]    = None
+  private var _router: Option[ActorRef]    = None
+  private var _tracer: Option[ActorRef]    = None
 
-  def system  : ActorSystem = systemOpt.getOrElse{ throw new RuntimeException("ActorSystem is not defined yet") }
-  def manager : ActorRef    = manageOpt.getOrElse{ throw new RuntimeException("manager is not defined yet") }
-  def router  : ActorRef    = routerOpt.getOrElse{ throw new RuntimeException("router is not defined yet") }
+  def system: ActorSystem = _system.getOrElse{ throw new RuntimeException("ActorSystem is not defined yet") }
+  def manage: ActorRef    = _manage.getOrElse{ throw new RuntimeException("manage is not defined yet") }
+  def nacker: ActorRef    = _nacker.getOrElse{ throw new RuntimeException("nacker is not defined yet") }
+  def router: ActorRef    = _router.getOrElse{ throw new RuntimeException("router is not defined yet") }
+  def tracer: ActorRef    = _tracer.getOrElse{ throw new RuntimeException("tracer is not defined yet") }
 
   protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
-    systemOpt = Some(system)
-    routerOpt = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this)), "AmqpRouter"))
-    manageOpt = Some(system.actorOf(Props(new AmqpManager()(this)), "AmqpManager"))
+    _system = Some(system)
+    _manage = Some(system.actorOf(Props(new AmqpManage(statsEngine)(this)), "AmqpManage"))
+    _nacker = Some(system.actorOf(Props(new AmqpNacker(statsEngine)(this)), "AmqpNacker"))
+    _router = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this)), "AmqpRouter"))
+    _tracer = Some(system.actorOf(Props(new AmqpTracer(statsEngine)(this)), "AmqpTracer"))
   }
 }

@@ -1,4 +1,4 @@
-package io.gatling.amqp.action
+package io.gatling.amqp.infra
 
 import akka.actor._
 import io.gatling.amqp.action._
@@ -33,7 +33,6 @@ case class MessageSent(
   startSend: Long,
   endSend: Long,
   session: Session,
-  next: ActorRef,
   title: String)
 
 /**
@@ -41,42 +40,37 @@ case class MessageSent(
   */
 case class MessageReceived(responseId: String, received: Long, message: Message)
 
-object AmqpRequestTrackerActor {
-  def props(statsEngine: StatsEngine) = Props(new AmqpRequestTrackerActor(statsEngine))
-}
-
-
 /**
   *  Bookkeeping actor to correlate request and response AMQP messages
   *  Once a message is correlated, it publishes to the Gatling core DataWriter
   */
-class AmqpRequestTrackerActor(statsEngine: StatsEngine) extends BaseActor with Logging {
+class AmqpTracer(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends BaseActor with Logging {
 
   // messages to be tracked through this HashMap - note it is a mutable hashmap
-  val sentMessages = mutable.HashMap.empty[String, (Long, Long, Session, ActorRef, String)]
+  val sentMessages = mutable.HashMap.empty[String, (Long, Long, Session, String)]
   val receivedMessages = mutable.HashMap.empty[String, (Long, Message)]
 
   // Actor receive loop
   def receive = {
 
     // message was sent; add the timestamps to the map
-    case MessageSent(corrId, startSend, endSend, session, next, title) =>
+    case MessageSent(corrId, startSend, endSend, session, title) =>
       receivedMessages.get(corrId) match {
         case Some((received, message)) =>
           // message was received out of order, lets just deal with it
-          processMessage(session, startSend, received, endSend, message, next, title)
+          processMessage(session, startSend, received, endSend, message, title)
           receivedMessages -= corrId
 
         case None =>
           // normal path
-          val sentMessage = (startSend, endSend, session, next, title)
+          val sentMessage = (startSend, endSend, session, title)
           sentMessages += corrId -> sentMessage
       }
     // message was received; publish to the datawriter and remove from the hashmap
     case MessageReceived(corrId, received, message) =>
       sentMessages.get(corrId) match {
-        case Some((startSend, endSend, session, next, title)) =>
-          processMessage(session, startSend, received, endSend, message, next, title)
+        case Some((startSend, endSend, session, title)) =>
+          processMessage(session, startSend, received, endSend, message, title)
           sentMessages -= corrId
 
         case None =>
@@ -95,7 +89,6 @@ class AmqpRequestTrackerActor(statsEngine: StatsEngine) extends BaseActor with L
                      received: Long,
                      endSend: Long,
                      message: Message,
-                     next: ActorRef,
                      title: String): Unit = {
 
       def executeNext(updatedSession: Session, status: Status, message: Option[String] = None) = {
