@@ -17,7 +17,8 @@ import pl.project13.scala.rainbow._
  * Wraps a AMQP protocol configuration
  */
 case class AmqpProtocol(
-  connection: Connection = Connection()
+  connection: Connection,
+  preparings: List[AmqpChannelCommand]
 ) extends Protocol with AmqpVariables with AmqpPreparation with StrictLogging {
   val event: AmqpEventBus = new AmqpEventBus()
 
@@ -55,7 +56,6 @@ case class AmqpProtocol(
     super.warmUp(system, statsEngine, throttler)
     setupVariables(system, statsEngine)
     awaitPreparation()
-    logger.info("amqp: warmUp finished")
   }
 
   /**
@@ -69,8 +69,4 @@ case class AmqpProtocol(
   override def toString: String = {
     s"AmqpProtocol(hashCode=$hashCode)"
   }
-}
-
-object AmqpProtocol {
-  def default: AmqpProtocol = new AmqpProtocol
 }

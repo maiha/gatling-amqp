@@ -15,13 +15,8 @@ import scala.util._
  * preparations for AMQP Server
  */
 trait AmqpPreparation { this: AmqpProtocol =>
-  private val preparings: ArrayBuffer[AmqpChannelCommand] = ArrayBuffer[AmqpChannelCommand]()
   private val prepareTimeout: Timeout = Timeout(3 seconds)
   private val terminateTimeout: Timeout = Timeout(1 hour)
-
-  def prepare(msg: AmqpChannelCommand): Unit = {
-    preparings += msg
-  }
 
   protected def awaitPreparation(): Unit = {
     for (msg <- preparings) {

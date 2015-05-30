@@ -1,5 +1,8 @@
 package io.gatling.amqp.config
 
+import io.gatling.amqp.data._
+import io.gatling.amqp.request._
+
 /**
  * Builder for AmqpProtocol used in DSL
  *
@@ -7,23 +10,33 @@ package io.gatling.amqp.config
  *
  * TODO: use Lens, or make it mutable
  */
-case class AmqpProtocolBuilder(protocol: AmqpProtocol) {
+case class AmqpProtocolBuilder(
+  connection: Connection = Connection(),
+  preparings: List[AmqpChannelCommand] = List[AmqpChannelCommand]()
+) {
   // primary accessors
-  def host(h: String)     = copy(protocol = protocol.copy(connection = protocol.connection.copy(host = h)))
-  def port(p: Int)        = copy(protocol = protocol.copy(connection = protocol.connection.copy(port = p)))
-  def vhost(v: String)    = copy(protocol = protocol.copy(connection = protocol.connection.copy(vhost = v)))
-  def poolSize(p: Int)    = copy(protocol = protocol.copy(connection = protocol.connection.copy(poolSize = p)))
-  def user(u: String)     = copy(protocol = protocol.copy(connection = protocol.connection.copy(user = u)))
-  def password(p: String) = copy(protocol = protocol.copy(connection = protocol.connection.copy(password = p)))
-  def confirm(b: Boolean) = copy(protocol = protocol.copy(connection = protocol.connection.copy(confirm = b)))
+  def host(h: String)     = copy(connection = connection.copy(host = h))
+  def port(p: Int)        = copy(connection = connection.copy(port = p))
+  def vhost(v: String)    = copy(connection = connection.copy(vhost = v))
+  def poolSize(p: Int)    = copy(connection = connection.copy(poolSize = p))
+  def user(u: String)     = copy(connection = connection.copy(user = u))
+  def password(p: String) = copy(connection = connection.copy(password = p))
+  def confirm(b: Boolean) = copy(connection = connection.copy(confirm = b))
 
   // shortcuts
   def auth(u: String, p: String) = user(u).password(p)
   def confirmMode()       = confirm(true)
 
+  // prepare
+  def prepare(msg: AmqpChannelCommand) = copy(preparings = preparings :+ msg)
+  def declare(q: AmqpQueue)   : AmqpProtocolBuilder = prepare(DeclareQueue(q))
+  def declare(x: AmqpExchange): AmqpProtocolBuilder = prepare(DeclareExchange(x))
+  def bind(x: AmqpExchange, q: AmqpQueue, routingKey: String = "", arguments: Arguments = DefaultArguments): AmqpProtocolBuilder =
+    prepare(BindQueue(x, q, routingKey, arguments))
+
   def build: AmqpProtocol = {
-    protocol.validate
-    protocol
+    connection.validate
+    AmqpProtocol(connection, preparings)
   }
 }
 
@@ -32,8 +45,6 @@ case class AmqpProtocolBuilder(protocol: AmqpProtocol) {
  */
 object AmqpProtocolBuilder {
   implicit def toAmqpProtocol(builder: AmqpProtocolBuilder): AmqpProtocol = builder.build
-
-  def default: AmqpProtocolBuilder = new AmqpProtocolBuilder(AmqpProtocol.default)
 }
 
 

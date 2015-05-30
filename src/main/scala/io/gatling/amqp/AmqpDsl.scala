@@ -3,6 +3,7 @@ package io.gatling.amqp
 import io.gatling.amqp.action._
 import io.gatling.amqp.check.AmqpCheckSupport
 import io.gatling.amqp.config._
+import io.gatling.amqp.data._
 import io.gatling.amqp.request._
 import io.gatling.amqp.request.builder._
 import io.gatling.core.action.builder.ActionBuilder
@@ -10,7 +11,7 @@ import io.gatling.core.session.Expression
 
 trait AmqpDsl extends AmqpCheckSupport {
 
-  def amqp = new AmqpProtocolBuilder(AmqpProtocol.default)
+  def amqp = AmqpProtocolBuilder()
 
   /**
    * DSL text to start the amqp builder
@@ -29,6 +30,6 @@ trait AmqpDsl extends AmqpCheckSupport {
 
   implicit def amqpRequestBuilder2ActionBuilder(builder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol): ActionBuilder = new AmqpActionBuilder(builder)
 
-  def topic(name: String) = AmqpTopic(name)
-  def queue(name: String) = AmqpQueue(name)
+  val exchange = AmqpExchange
+  val queue    = AmqpQueue
 }

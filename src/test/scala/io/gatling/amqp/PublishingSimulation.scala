@@ -11,15 +11,15 @@ class PublishingSimulation extends Simulation {
   implicit val amqpProtocol: AmqpProtocol = amqp
     .host("amqp")
     .port(5672)
+    // .vhost("/")
     .auth("guest", "guest")
     .poolSize(3)
+    // .declare(queue("q1", durable = true, autoDelete = false))
     .confirmMode()
-    // .prepare(DeclareQueue("q1", autoDelete = false)) // TODO: implement this dsl
 
-  val bytes    = Array.fill[Byte](1024)(1) // 1KB data for test
-  val write1kb = PublishRequest("q1", bytes = bytes)
-  // val req   = write1kb.persistent
-  val req      = write1kb.persistent
+  val bytes = Array.fill[Byte](1024)(1) // 1KB data for test
+  // val req   = PublishRequest("q1", bytes = bytes)
+  val req   = PublishRequest("q1", bytes = bytes).persistent
 
   val scn = scenario("AMQP Publish(ack)").repeat(1000) {
     exec(amqp("Publish").publish(req))

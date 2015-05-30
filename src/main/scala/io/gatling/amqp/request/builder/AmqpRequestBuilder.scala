@@ -14,7 +14,6 @@ import scala.collection.mutable
 // (implicit configuration: GatlingConfiguration)
 class AmqpRequestBuilder(
   requestName: Expression[String],
-  var _destination: Option[AmqpDestination] = None,
   val requests: mutable.ArrayBuffer[AmqpRequest] = mutable.ArrayBuffer[AmqpRequest]()
 ) extends Publishable {
 
