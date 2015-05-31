@@ -15,10 +15,8 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util._
 
-class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends AmqpActor {
-
-  object Nacked extends RuntimeException
-  private val checkTerminationInterval = 500.milliseconds
+class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends Actor with Logging {
+  private val checkTerminationInterval = 1.second
 
   class TracedQueue(name: String) {
     private val bit = new mutable.BitSet()           // index as bit
@@ -38,24 +36,21 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
       map.put(n, event)
 
       publishedFact.add(n)
-
-      import event._
-      amqp.tracer ! MessageSent(eventId, startedAt, startedAt, session, "req")
     }
 
     /**
      * consuming accessors
      */
 
-    def finished(n: Int, stoppedAt: Long): Unit = {
+    def finished(n: Int, stoppedAt: Long, event: AmqpPublishing): Unit = {
       debugLog(s"finished($n)")
-      amqp.tracer ! MessageReceived(get(n).eventId, stoppedAt, null)
+      amqp.tracer ! MessageOk(event, stoppedAt, "publish")
       consume(n)
     }
 
     def failed(n: Int, stoppedAt: Long, e: Throwable): Unit = {
       debugLog(s"failed($n)")
-      amqp.tracer ! MessageReceived(get(n).eventId, stoppedAt, null)
+      amqp.tracer ! MessageNg(get(n), stoppedAt, e.getClass.getSimpleName, Some(e.toString))
       consume(n)
     }
 
@@ -63,18 +58,18 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
      * multiple consuming accessors
      */
 
-    def accepted(n: Int, multiple: Boolean, stoppedAt: Long): Unit = {
-      debugLog(s"accepted($n)")
+    def acked(n: Int, multiple: Boolean, stoppedAt: Long): Unit = {
+      debugLog(s"acked($n)")
       running(n, multiple).foreach{ i =>
-        amqp.tracer ! MessageReceived(get(i).eventId, stoppedAt, null)
+        amqp.tracer ! MessageOk(get(i), stoppedAt, "publish(ack)")
         consume(i)
       }
     }
 
-    def rejected(n: Int, multiple: Boolean, stoppedAt: Long, e: Throwable): Unit = {
-      debugLog(s"rejected($n)")
+    def nacked(n: Int, multiple: Boolean, stoppedAt: Long): Unit = {
+      debugLog(s"nacked($n)")
       running(n, multiple).foreach{ i =>
-        amqp.tracer ! MessageReceived(get(i).eventId, stoppedAt, null)
+        amqp.tracer ! MessageNg(get(i), stoppedAt, "publish(ack)", Some("nacked"))
         consume(i)
       }
     }
@@ -143,23 +138,24 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
           notifyTermination()
         case n =>
           log.debug(s"CheckTermination: waiting $n confirmations. re-check after($interval)".yellow)
-          system.scheduler.scheduleOnce(interval, self, mes)  // retry again after interval
+          import scala.concurrent.ExecutionContext.Implicits.global
+          context.system.scheduler.scheduleOnce(interval, self, mes)  // retry again after interval
       }
 
     case event@ AmqpPublishing(publisherName, no, req, startedAt, session) =>
       queueFor(publisherName).publish(no, event)
 
-    case event@ AmqpPublished(publisherName, no, stoppedAt) =>
-      queueFor(publisherName).finished(no, stoppedAt)
+    case event@ AmqpPublished(publisherName, no, stoppedAt, publishing) =>
+      queueFor(publisherName).finished(no, stoppedAt, publishing)
 
     case event@ AmqpPublishFailed(publisherName, no, stoppedAt, err) =>
       queueFor(publisherName).failed(no, stoppedAt, err)
 
     case event@ AmqpPublishAcked(publisherName, no, multiple, stoppedAt) =>
-      queueFor(publisherName).accepted(no, multiple, stoppedAt)
+      queueFor(publisherName).acked(no, multiple, stoppedAt)
 
     case event@ AmqpPublishNacked(publisherName, no, multiple, stoppedAt) =>
-      queueFor(publisherName).rejected(no, multiple, stoppedAt, Nacked)
+      queueFor(publisherName).nacked(no, multiple, stoppedAt)
 
     case event: AmqpPublishEvent =>  // ignore other publish events
   }

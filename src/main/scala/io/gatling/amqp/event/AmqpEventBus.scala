@@ -18,10 +18,10 @@ abstract class AmqpPublishEvent extends AmqpEvent {
 }
 case class AmqpPublishRequest(req: PublishRequest, session: Session) extends AmqpPublishEvent
 
-case class AmqpPublishing(publisherName: String, no: Int, req: PublishRequest, startedAt: Long, session: Session) extends AmqpPublishEvent {
+case class AmqpPublishing(publisherName: String, no: Int, startedAt: Long, req: PublishRequest, session: Session) extends AmqpPublishEvent {
   def eventId: String = s"$publisherName-$no"
 }
-case class AmqpPublished(publisherName: String, no: Int, stoppedAt: Long) extends AmqpPublishEvent {
+case class AmqpPublished(publisherName: String, no: Int, stoppedAt: Long, event: AmqpPublishing) extends AmqpPublishEvent {
   def eventId: String = s"$publisherName-$no"
 }
 case class AmqpPublishFailed(publisherName: String, no: Int, stoppedAt: Long, e: Throwable) extends AmqpPublishEvent {

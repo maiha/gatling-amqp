@@ -1,114 +1,28 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
-import io.gatling.amqp.action._
 import io.gatling.amqp.config._
-import io.gatling.amqp.data._
-import io.gatling.amqp.infra._
-import io.gatling.amqp.request._
-import io.gatling.amqp.request.builder._
-import io.gatling.core.action.builder.ActionBuilder
-import io.gatling.core.session.Expression
-import io.gatling.core.structure.ScenarioContext
+import io.gatling.amqp.event._
 import io.gatling.core.result.writer.StatsEngine
 
-import scala.collection.mutable
-
-import io.gatling.core.Predef.Session
-import io.gatling.core.akka.BaseActor
-import io.gatling.core.check.Check
 import io.gatling.core.result.message.{KO, OK, ResponseTimings,Status}
-import io.gatling.core.util.TimeHelper.nowMillis
-import io.gatling.core.validation.Failure
-import io.gatling.amqp._
 
-import akka.actor.{ ActorRef, Props }
+case class MessageOk(event: AmqpPublishing, stoppedAt: Long, title: String)
+case class MessageNg(event: AmqpPublishing, stoppedAt: Long, title: String, message: Option[String])
 
 /**
-  *  Advise actor a message was sent to AMQP provider
-  *  @author jasonk@bluedevel.com
-  */
-case class MessageSent(
-  requestId: String,
-  startSend: Long,
-  endSend: Long,
-  session: Session,
-  title: String)
-
-/**
-  *  Advise actor a response message was received from AMQP provider
-  */
-case class MessageReceived(responseId: String, received: Long, message: Message)
-
-/**
-  *  Bookkeeping actor to correlate request and response AMQP messages
-  *  Once a message is correlated, it publishes to the Gatling core DataWriter
-  */
-class AmqpTracer(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends BaseActor with Logging {
-
-  // messages to be tracked through this HashMap - note it is a mutable hashmap
-  val sentMessages = mutable.HashMap.empty[String, (Long, Long, Session, String)]
-  val receivedMessages = mutable.HashMap.empty[String, (Long, Message)]
-
-  // Actor receive loop
-  def receive = {
-
-    // message was sent; add the timestamps to the map
-    case MessageSent(corrId, startSend, endSend, session, title) =>
-      receivedMessages.get(corrId) match {
-        case Some((received, message)) =>
-          // message was received out of order, lets just deal with it
-          processMessage(session, startSend, received, endSend, message, title)
-          receivedMessages -= corrId
-
-        case None =>
-          // normal path
-          val sentMessage = (startSend, endSend, session, title)
-          sentMessages += corrId -> sentMessage
-      }
-    // message was received; publish to the datawriter and remove from the hashmap
-    case MessageReceived(corrId, received, message) =>
-      sentMessages.get(corrId) match {
-        case Some((startSend, endSend, session, title)) =>
-          processMessage(session, startSend, received, endSend, message, title)
-          sentMessages -= corrId
-
-        case None =>
-          // failed to find message; early receive? or bad return correlation id?
-          // let's add it to the received messages buffer just in case
-          val receivedMessage = (received, message)
-          receivedMessages += corrId -> receivedMessage
-      }
-  }
-
-  /**
-    *  Processes a matched message
-    */
-  def processMessage(session: Session,
-                     startSend: Long,
-                     received: Long,
-                     endSend: Long,
-                     message: Message,
-                     title: String): Unit = {
-
-      def executeNext(updatedSession: Session, status: Status, message: Option[String] = None) = {
-        val timings = ResponseTimings(startSend, endSend, endSend, received)
-        statsEngine.logResponse(updatedSession, title, timings, status, None, message)
-//        next ! updatedSession.logGroupRequest((received - startSend).toInt, status).increaseDrift(nowMillis - received)
-      }
-
-/*
-
-    // run all the checks, advise the Gatling API that it is complete and move to next
-    val (checkSaveUpdate, error) = Check.check(message, session, checks)
-    val newSession = checkSaveUpdate(session)
-    error match {
-      case None                   => executeNext(newSession, OK)
-      case Some(Failure(message)) => executeNext(newSession.markAsFailed, KO, Some(message))
-    }
+ *  Publish stats log to the Gatling core DataWriter
  */
+class AmqpTracer(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends Actor with Logging {
+  def receive = {
+    case MessageOk(event, stoppedAt, title) =>
+      import event._
+      val timings = ResponseTimings(startedAt, stoppedAt, stoppedAt, stoppedAt)
+      statsEngine.logResponse(session, title, timings, OK, None, None)
 
-    // assume all responses ok
-    executeNext(session, OK)
+    case MessageNg(event, stoppedAt, title, message) =>
+      import event._
+      val timings = ResponseTimings(startedAt, stoppedAt, stoppedAt, stoppedAt)
+      statsEngine.logResponse(session, title, timings, KO, None, message)
   }
 }
