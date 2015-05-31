@@ -19,8 +19,8 @@ import pl.project13.scala.rainbow._
 case class AmqpProtocol(
   connection: Connection,
   preparings: List[AmqpChannelCommand]
-) extends Protocol with AmqpVariables with AmqpPreparation with StrictLogging {
-  val event: AmqpEventBus = new AmqpEventBus()
+) extends Protocol with AmqpVariables with AmqpPreparation with AmqpTermination with StrictLogging {
+  lazy val event: AmqpEventBus = new AmqpEventBus()  // not used yet cause messages seems in random order in the bus
 
   /**
    * create new AMQP connection

@@ -14,15 +14,10 @@ import scala.collection.mutable
 // (implicit configuration: GatlingConfiguration)
 class AmqpRequestBuilder(
   requestName: Expression[String],
-  val requests: mutable.ArrayBuffer[AmqpRequest] = mutable.ArrayBuffer[AmqpRequest]()
-) extends Publishable {
+  var _request: Option[AmqpRequest] = None
+) extends Publishing with Consuming {
 
-  def publishRequest: PublishRequest = requests.headOption match {
-    case Some(req: PublishRequest) => req
-    case _ => throw new RuntimeException("PublishRequest not found")
-  }
-
-  def build: Seq[AmqpRequest] = requests.toSeq
+  def build: AmqpRequest = _request.getOrElse(throw new RuntimeException("No AmqpRequest Found"))
 }
 
 object AmqpRequestBuilder {

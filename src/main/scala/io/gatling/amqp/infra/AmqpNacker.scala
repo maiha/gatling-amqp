@@ -120,21 +120,21 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   }
 
   private def notifyTermination(): Unit = {
-    terminationWaitingActors.foreach{ case (ref, mes) => ref ! Success(mes) }
+    terminationWaitingActors.foreach{ case (ref, mes) => ref ! Success("all publishing requests successfully finished") }
     terminationWaitingActors.clear
   }
 
   private case class CheckTermination(interval: FiniteDuration)
 
   override def receive = {
-    case mes@ WaitConfirms(session) =>
+    case mes@ WaitTermination(session) =>
       startCheckTerminationOnce()
       waitTermination(sender(), mes)
 
     case mes@ CheckTermination(interval) =>
       runningCount match {
         case 0 =>
-          log.debug(s"CheckTermination: all requests finished".green)
+          log.debug(s"CheckTermination: all publish requests finished".green)
           notifyTermination()
         case n =>
           log.debug(s"CheckTermination: waiting $n confirmations. re-check after($interval)".yellow)

@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.LazyLogging
 trait Logging extends Actor with LazyLogging {
   protected lazy val className = getClass.getSimpleName
   protected val log = logger // gap between LazyLogging and ActorLogging
+  protected def stopMessage: String = ""
 
   override def preStart(): Unit = {
     super.preStart()
@@ -14,7 +15,7 @@ trait Logging extends Actor with LazyLogging {
   }
 
   override def postStop(): Unit = {
-    log.info(s"amqp: Stop actor `$className'".yellow)
+    log.info(s"amqp: Stop actor `$className' $stopMessage".yellow)
     super.postStop()
   }
 }

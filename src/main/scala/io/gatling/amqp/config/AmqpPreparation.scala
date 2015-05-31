@@ -16,7 +16,6 @@ import scala.util._
  */
 trait AmqpPreparation { this: AmqpProtocol =>
   private val prepareTimeout: Timeout = Timeout(3 seconds)
-  private val terminateTimeout: Timeout = Timeout(1 hour)
 
   protected def awaitPreparation(): Unit = {
     for (msg <- preparings) {
@@ -24,13 +23,6 @@ trait AmqpPreparation { this: AmqpProtocol =>
         case Success(m) => logger.info(s"amqp: $m".green)
         case Failure(e) => throw e
       }
-    }
-  }
-
-  protected def awaitTerminationFor(session: Session): Unit = {
-    Await.result((nacker ask WaitConfirms(session))(terminateTimeout), Duration.Inf) match {
-      case Success(m) => logger.debug(s"amqp: $m".green)
-      case Failure(e) => throw e
     }
   }
 }

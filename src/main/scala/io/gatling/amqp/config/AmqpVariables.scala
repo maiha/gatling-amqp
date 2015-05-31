@@ -16,6 +16,7 @@ trait AmqpVariables { this: AmqpProtocol =>
   private var _nacker: Option[ActorRef]    = None
   private var _router: Option[ActorRef]    = None
   private var _tracer: Option[ActorRef]    = None
+  private var _stats : Option[StatsEngine] = None
 
   def system: ActorSystem = _system.getOrElse{ throw new RuntimeException("ActorSystem is not defined yet") }
   def manage: ActorRef    = _manage.getOrElse{ throw new RuntimeException("manage is not defined yet") }
@@ -23,8 +24,11 @@ trait AmqpVariables { this: AmqpProtocol =>
   def router: ActorRef    = _router.getOrElse{ throw new RuntimeException("router is not defined yet") }
   def tracer: ActorRef    = _tracer.getOrElse{ throw new RuntimeException("tracer is not defined yet") }
 
+  def statsEngine : StatsEngine = _stats .getOrElse{ throw new RuntimeException("StatsEngine is not defined yet") }
+
   protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
     _system = Some(system)
+    _stats  = Some(statsEngine)
     _manage = Some(system.actorOf(Props(new AmqpManage(statsEngine)(this)), "AmqpManage"))
     _nacker = Some(system.actorOf(Props(new AmqpNacker(statsEngine)(this)), "AmqpNacker"))
     _router = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this)), "AmqpRouter"))
