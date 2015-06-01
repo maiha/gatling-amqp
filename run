@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# args
+
+declare -i argc=0
+declare -a argv=()
+
+while (( $# > 0 ))
+do
+    case "$1" in
+        -*)
+            if [[ "$1" =~ 'd' ]]; then
+                dflag='-d'
+            fi
+            shift
+            ;;
+        *)
+            ((++argc))
+            argv=("${argv[@]}" "$1")
+            shift
+            ;;
+    esac
+done
+
+usage_exit() {
+  echo "Usage: $0 [-d] (p|c) name" 1>&2
+  exit 1
+}
+
+[ $argc = 2 ] || usage_exit
+
+op=${argv[0]}   # p or c
+cmd=""
+[ "$op" = "p" ] && cmd="sbt 'testOnly io.gatling.amqp.PublishingSimulation'"
+[ "$op" = "c" ] && cmd="sbt 'testOnly io.gatling.amqp.ConsumingSimulation'"
+[ "$cmd" = "" ] && usage_exit
+
+name=${argv[1]}
+dir="stats/$op/$name"
+log="$dir/log"
+
+[ "$dflag" == "-d" ] && ( rm -rf $dir )
+if [ -d $dir ] ; then
+  echo "error: $dir already exists" 1>&2
+  usage_exit
+fi
+mkdir -p $dir
+
+# copy programs
+cp -p src/test/scala/io/gatling/amqp/*.scala "$dir/"
+
+time script -c "$cmd" $log
+
+exit 0

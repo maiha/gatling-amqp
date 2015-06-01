@@ -115,6 +115,8 @@ Usage
 Run
 ===
 
+## sbt directly
+
 ```
 % sbt
 > testOnly io.gatling.amqp.PublishingSimulation
@@ -123,11 +125,28 @@ Run
 > testOnly io.gatling.amqp.ConsumingSimulation
 ```
 
+- try `sbt -J-Xmx8192m -J-XX:MaxPermSize=256m` for publishing massive messages
+
+## shell script to store gatling stdout logs and simulation sources
+
+```
+% ./run p foo
+```
+
+- stored in "stats/p/foo"
+
+
 Benchmark
 =========
 
-- rabbitmq = 3.5.2
-- server = cpu: Xeon X5687@3.60GHz, mem: 24GB
+### environments
+
+#### server
+- cpu: Xeon X5687(3.60GHz)
+- mem: 24GB, limit(10GiB), watermark(5GiB)
+
+#### rabbitmq
+- version: 3.5.2
 - total bytes = `servers * payalod * messages * users`
 - users = concurrency of AMQP connections
 
@@ -167,10 +186,10 @@ Benchmark
 |  10 KB  |  o  | 10,000 |    10   |  1 GB | 6779 | 67.8 MB/s |     1   |auto |6233 |
 |  10 KB  |  o  |200,000 |    10   | 20 GB | 7639 | 76.4 MB/s |     1   |auto |7622 |
 
+Library
+=======
 
-Environment
-===========
-
+- amqp-client-3.5.1
 - gatling-sbt-2.1.6 (to implement easily)
 - gatling-2.2.0-M3 (live with edge)
 

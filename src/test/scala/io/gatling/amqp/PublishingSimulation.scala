@@ -17,10 +17,11 @@ class PublishingSimulation extends Simulation {
     // .declare(queue("q1", durable = true, autoDelete = false))
     .confirmMode()
 
-  val body = Array.fill[Byte](1000*10)(1) // 1KB data for test
-  val req  = PublishRequest("q1", bytes = body).persistent
+  // val body = Array.fill[Byte](1000*10)(1) // 1KB data for test
+  val body = "{'x':1}"
+  val req  = PublishRequest("q1", body = body).persistent
 
-  val scn  = scenario("AMQP Publish(ack)").repeat(1000) {
+  val scn  = scenario("AMQP Publish(ack)").repeat(10) {
     exec(amqp("Publish").publish(req))
   }
 
