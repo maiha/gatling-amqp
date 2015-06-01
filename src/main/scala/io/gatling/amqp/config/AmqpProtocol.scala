@@ -1,8 +1,6 @@
 package io.gatling.amqp.config
 
 import akka.actor._
-import akka.event.EventBus
-import akka.event.LookupClassification
 import com.rabbitmq.client.ConnectionFactory
 import com.typesafe.scalalogging.StrictLogging
 import io.gatling.amqp.data._
@@ -11,7 +9,6 @@ import io.gatling.core.config.Protocol
 import io.gatling.core.controller.throttle.Throttler
 import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
-import pl.project13.scala.rainbow._
 
 /**
  * Wraps a AMQP protocol configuration

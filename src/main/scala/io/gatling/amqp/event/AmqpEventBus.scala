@@ -2,9 +2,6 @@ package io.gatling.amqp.event
 
 import akka.actor._
 import akka.event._
-import com.rabbitmq.client.AMQP.BasicProperties
-import io.gatling.amqp.data._
-import io.gatling.core.session.Session
 
 class AmqpEventBus extends ActorEventBus with LookupClassification {
   type Event      = AmqpEvent

@@ -7,9 +7,9 @@ import io.gatling.amqp.data._
 import io.gatling.amqp.event._
 import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
-import scala.util._
+
 import scala.collection.mutable
-import pl.project13.scala.rainbow._
+import scala.util._
 
 class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends Actor with Logging {
   private var publishers = Router(RoundRobinRoutingLogic(), Vector[Routee]())

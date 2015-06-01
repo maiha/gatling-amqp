@@ -1,7 +1,6 @@
 package io.gatling.amqp.config
 
 import io.gatling.amqp.data._
-import io.gatling.amqp.request._
 
 /**
  * Builder for AmqpProtocol used in DSL

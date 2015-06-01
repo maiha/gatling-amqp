@@ -2,11 +2,8 @@ package io.gatling.amqp.config
 
 import akka.pattern.ask
 import akka.util.Timeout
-import io.gatling.amqp.data._
-import io.gatling.core.session.Session
 import pl.project13.scala.rainbow._
 
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util._

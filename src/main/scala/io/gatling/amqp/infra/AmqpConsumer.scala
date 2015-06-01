@@ -1,19 +1,18 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
-import com.rabbitmq.client._
 import com.rabbitmq.client.QueueingConsumer.Delivery
+import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.amqp.util._
-import io.gatling.core.util.TimeHelper.nowMillis
 import io.gatling.core.session.Session
-import java.util.concurrent.atomic._
+import io.gatling.core.util.TimeHelper.nowMillis
+import pl.project13.scala.rainbow._
+
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util._
-import pl.project13.scala.rainbow._
 
 class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProtocol) extends AmqpActor with Stats {
   implicit val amqp: AmqpProtocol = _amqp

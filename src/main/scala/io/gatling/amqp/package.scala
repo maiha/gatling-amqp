@@ -1,5 +1,6 @@
 package io.gatling
 
+// TODO: use Check
 import io.gatling.core.check.Check
 
 package object amqp {

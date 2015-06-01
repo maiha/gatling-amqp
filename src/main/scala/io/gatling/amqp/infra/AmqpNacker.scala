@@ -1,16 +1,12 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
-
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.amqp.util._
 import io.gatling.core.result.writer.StatsEngine
-import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow._
 
-import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util._

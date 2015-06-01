@@ -1,15 +1,15 @@
 package io.gatling.amqp.infra
 
+import java.util.concurrent.atomic._
+
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.amqp.util._
-import io.gatling.core.util.TimeHelper.nowMillis
 import io.gatling.core.session.Session
-import java.util.concurrent.atomic._
+import io.gatling.core.util.TimeHelper.nowMillis
+
 import scala.util._
-import pl.project13.scala.rainbow._
 
 class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends AmqpActor {
   private val nacker = amqp.nacker

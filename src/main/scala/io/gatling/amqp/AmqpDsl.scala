@@ -4,7 +4,6 @@ import io.gatling.amqp.action._
 import io.gatling.amqp.check.AmqpCheckSupport
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import io.gatling.amqp.request._
 import io.gatling.amqp.request.builder._
 import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.session.Expression

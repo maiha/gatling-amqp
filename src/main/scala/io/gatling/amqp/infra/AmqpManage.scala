@@ -2,9 +2,7 @@ package io.gatling.amqp.infra
 
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import io.gatling.amqp.event._
 import io.gatling.core.result.writer.StatsEngine
-import io.gatling.core.util.TimeHelper.nowMillis
 
 import scala.collection.JavaConversions._
 

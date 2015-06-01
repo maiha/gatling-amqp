@@ -1,15 +1,8 @@
 package io.gatling.amqp.infra
 
-import com.rabbitmq.client._
-import com.rabbitmq.client.QueueingConsumer.Delivery
 import io.gatling.amqp.config._
-import io.gatling.amqp.data._
-import io.gatling.amqp.event._
-import io.gatling.amqp.util._
-import io.gatling.core.result.message.{KO, OK, ResponseTimings,Status}
+import io.gatling.core.result.message.{KO, OK}
 import io.gatling.core.session.Session
-import io.gatling.core.util.TimeHelper.nowMillis
-import pl.project13.scala.rainbow._
 
 trait Stats { this: AmqpActor =>
   implicit val amqp: AmqpProtocol
