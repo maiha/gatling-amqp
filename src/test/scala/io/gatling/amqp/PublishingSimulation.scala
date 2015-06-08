@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 
 class PublishingSimulation extends Simulation {
   implicit val amqpProtocol: AmqpProtocol = amqp
-    .host("amqp")
+    .host("localhost")
     .port(5672)
     // .vhost("/")
     .auth("guest", "guest")
@@ -21,7 +21,7 @@ class PublishingSimulation extends Simulation {
   val body = "{'x':1}"
   val req  = PublishRequest("q1", body = body).persistent
 
-  val scn  = scenario("AMQP Publish(ack)").repeat(10000) {
+  val scn  = scenario("AMQP Publish(ack)").repeat(1000) {
     exec(amqp("Publish").publish(req))
   }
 
