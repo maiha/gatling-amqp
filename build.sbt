@@ -10,7 +10,19 @@ val gatlingVersion = "2.2.0-M3"
 
 xerial.sbt.Sonatype.sonatypeRootSettings
 
-version := "0.5-SNAPSHOT"
+// Maven Publishing
+// http://www.scala-sbt.org/0.13/docs/Using-Sonatype.html
+
+publishMavenStyle := true
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
+
+version := "0.5"
 organization := "sc.ala"
 name := "gatling-amqp"
 description := "Gatling AMQP support"
