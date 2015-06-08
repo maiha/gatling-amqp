@@ -32,7 +32,7 @@ pomExtra := (
 
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
-libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.1"
+libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.3"
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.5.3"
 libraryDependencies += "jaxen" % "jaxen" % "1.1.6"
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
