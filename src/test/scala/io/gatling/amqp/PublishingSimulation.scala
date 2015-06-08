@@ -14,7 +14,7 @@ class PublishingSimulation extends Simulation {
     // .vhost("/")
     .auth("guest", "guest")
     .poolSize(3)
-    // .declare(queue("q1", durable = true, autoDelete = false))
+    .declare(queue("q1", durable = true, autoDelete = false))
     .confirmMode()
 
   // val body = Array.fill[Byte](1000*10)(1) // 1KB data for test
