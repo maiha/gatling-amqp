@@ -8,6 +8,28 @@ scalacOptions := Seq(
 
 val gatlingVersion = "2.2.0-M3"
 
+xerial.sbt.Sonatype.sonatypeRootSettings
+
+organization := "sc.ala"
+name := "gatling-amqp"
+description := "Gatling AMQP support"
+homepage := Some(url("https://github.com/maiha/gatling-amqp"))
+licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php"))
+
+pomExtra := (
+     <developers>
+        <developer>
+          <id>maiha</id>
+          <name>Kazunori Nishi</name>
+          <url>https://github.com/maiha</url>
+        </developer>
+      </developers>
+      <scm>
+        <url>https://github.com/maiha/gatling-amqp</url>
+        <connection>scm:git:git@github.com:maiha/gatling-amqp.git</connection>
+      </scm>
+)
+
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
 libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.1"

@@ -21,7 +21,7 @@ class PublishingSimulation extends Simulation {
   val body = "{'x':1}"
   val req  = PublishRequest("q1", body = body).persistent
 
-  val scn  = scenario("AMQP Publish(ack)").repeat(10) {
+  val scn  = scenario("AMQP Publish(ack)").repeat(10000) {
     exec(amqp("Publish").publish(req))
   }
 
