@@ -10,6 +10,7 @@ val gatlingVersion = "2.2.0-M3"
 
 xerial.sbt.Sonatype.sonatypeRootSettings
 
+version := "0.5-SNAPSHOT"
 organization := "sc.ala"
 name := "gatling-amqp"
 description := "Gatling AMQP support"
