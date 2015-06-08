@@ -5,7 +5,6 @@ import com.rabbitmq.client.Channel
 import io.gatling.amqp.config._
 import io.gatling.amqp.infra.AmqpActor.ConnectionClosed
 import io.gatling.core.akka.BaseActor
-import resource.managed
 import pl.project13.scala.rainbow._
 
 import scala.util.{Failure, Success}
@@ -51,8 +50,11 @@ abstract class AmqpActor(implicit amqp: AmqpProtocol) extends BaseActor with Log
     if (isOpened) {
       action(channel)
     } else {
-      for (channel <- managed(conn.createChannel())) {
+      val channel = conn.createChannel()
+      try {
         action(channel)
+      } finally {
+        channel.close()
       }
     }
   }

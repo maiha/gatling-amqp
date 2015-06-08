@@ -191,7 +191,7 @@ Benchmark
 Library
 =======
 
-- amqp-client-3.5.1
+- amqp-client-3.5.3
 - gatling-sbt-2.1.6 (to implement easily)
 - gatling-2.2.0-M3 (live with edge)
 
