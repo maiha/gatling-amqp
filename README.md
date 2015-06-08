@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/maiha/gatling-amqp.svg?branch=master)](https://travis-ci.org/maiha/gatling-amqp)
+
 Introduction
 ============
 
@@ -201,3 +203,4 @@ TODO
 - make AmqpProtocol immutable
 - make Builder mutable
 - consume action (manual ack)
+
