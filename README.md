@@ -13,6 +13,15 @@ Gatling AMQP support
 Usage
 =====
 
+## handy cli (use AmqpProtocol as console utility) [0.6 feature]
+
+
+```
+scala> import io.gatling.amqp.Predef._
+scala> amqp.declare(queue("q3", durable = true)).run
+```
+
+
 ## publish (normal)
 
 
@@ -202,5 +211,6 @@ TODO
 - declare exchanges, queues and bindings in action builder context (to test declaration costs)
 - make AmqpProtocol immutable
 - make Builder mutable
+- mandatory
 - consume action (manual ack)
 

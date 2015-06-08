@@ -2,6 +2,7 @@ package io.gatling.amqp.infra
 
 import akka.actor._
 import com.rabbitmq.client.Channel
+import com.rabbitmq.client.AlreadyClosedException
 import io.gatling.amqp.config._
 import io.gatling.amqp.infra.AmqpActor.ConnectionClosed
 import io.gatling.core.akka.BaseActor
@@ -34,7 +35,13 @@ abstract class AmqpActor(implicit amqp: AmqpProtocol) extends BaseActor with Log
   }
 
   protected def close(): Unit = {
-    _channel.foreach(_.close())
+    try {
+      _channel.foreach(_.close())
+    } catch {
+      case e: AlreadyClosedException =>
+        // already handled
+        // logger.debug(s"Connection.close failed: $e".yellow, e)
+    }
     _channel = None
     conn.close()
   }

@@ -16,7 +16,7 @@ import io.gatling.core.session.Session
 case class AmqpProtocol(
   connection: Connection,
   preparings: List[AmqpChannelCommand]
-) extends Protocol with AmqpVariables with AmqpPreparation with AmqpTermination with StrictLogging {
+) extends Protocol with AmqpVariables with AmqpPreparation with AmqpTermination with AmqpRunner with StrictLogging {
   lazy val event: AmqpEventBus = new AmqpEventBus()  // not used yet cause messages seems in random order in the bus
 
   /**
