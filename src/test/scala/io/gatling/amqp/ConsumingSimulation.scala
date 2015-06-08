@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 
 class ConsumingSimulation extends Simulation {
   implicit val amqpProtocol: AmqpProtocol = amqp
-    .host("amqp")
+    .host("localhost")
     .port(5672)
     .auth("guest", "guest")
 
