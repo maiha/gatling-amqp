@@ -22,7 +22,7 @@ publishTo := {
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
 
-version := "0.5"
+version := "0.6-SNAPSHOT"
 organization := "sc.ala"
 name := "gatling-amqp"
 description := "Gatling AMQP support"
@@ -46,5 +46,4 @@ pomExtra := (
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
 libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.3"
-libraryDependencies += "org.scalatest" % "scalatest_2.11" % "3.0.0-SNAP4" % "test"
 libraryDependencies += "pl.project13.scala" %% "rainbow" % "0.2"

@@ -18,7 +18,7 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
   implicit val amqp: AmqpProtocol = _amqp
 
   val checkTerminationInterval = 1.second
-  val initialTimeout  = 3600 * 1000  // msec (1 hour)
+  val initialTimeout  = 60 * 1000  // msec (1 min)
   val deliveryTimeout = 1 * 1000  // msec
   val runningTimeout  = 2 * 1000  // assumes that no messages queued when this time past from lastDeliveredAt
 
