@@ -1,5 +1,5 @@
 language: scala
-script: sbt "test"
+script: sbt ";testOnly io.gatling.amqp.PublishingSimulation; testOnly io.gatling.amqp.ConsumingSimulation"
 sudo: false
 services:
  - rabbitmq
