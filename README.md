@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/maiha/gatling-amqp.svg?branch=master)](https://travis-ci.org/maiha/gatling-amqp)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/sc.ala/gatling-amqp_2.11/badge.svg)](https://maven-badges.herokuapp.com/maven-central/sc.ala/gatling-amqp_2.11)
 
 Introduction
 ============
