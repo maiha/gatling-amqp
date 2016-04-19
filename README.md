@@ -215,3 +215,7 @@ TODO
 - mandatory
 - consume action (manual ack)
 
+License
+=======
+
+released under the [MIT License](http://www.opensource.org/licenses/MIT).
