@@ -30,7 +30,7 @@ object PublishRequest {
     new PublishRequest(exchange, routingKey, props(), body.getBytes("UTF-8"))
 
   def apply(exchange: Exchange, routingKey: String, bytes: Array[Byte]): PublishRequest =
-    new PublishRequest(exchange, "", props(), bytes)
+    new PublishRequest(exchange, routingKey, props(), bytes)
 
   def props(): BasicProperties = {
     val builder = new BasicProperties.Builder()
