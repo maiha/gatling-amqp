@@ -1,12 +1,12 @@
 enablePlugins(GatlingPlugin)
 
-scalaVersion := "2.11.6"
+scalaVersion := "2.11.8"
 
 scalacOptions := Seq(
   "-encoding", "UTF-8", "-target:jvm-1.7", "-deprecation",
   "-feature", "-unchecked", "-language:implicitConversions", "-language:postfixOps")
 
-val gatlingVersion = "2.2.0-M3"
+val gatlingVersion = "2.2.0"
 
 xerial.sbt.Sonatype.sonatypeRootSettings
 
@@ -21,6 +21,9 @@ publishTo := {
   else
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
+
+// just uncomment and run sbt publish; (or experiment with sbt publishLocaly)
+// publishTo := Some(Resolver.file("file",  new File(Path.userHome.absolutePath+"/.m2/repository")))
 
 version := "0.6-SNAPSHOT"
 organization := "sc.ala"
@@ -45,5 +48,5 @@ pomExtra := (
 
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
-libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.3"
+libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.7"
 libraryDependencies += "pl.project13.scala" %% "rainbow" % "0.2"

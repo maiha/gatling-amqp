@@ -1,8 +1,9 @@
 package io.gatling.amqp.infra
 
+import akka.actor.Props
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 
 import scala.collection.JavaConversions._
 
@@ -20,4 +21,8 @@ class AmqpManage(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
       log.info(s"Initializing AMQP binding $exchange to $queue")
       interact(msg) { _.queueBind(queue.name, exchange.name, routingKey, arguments) }
   }
+}
+
+object AmqpManage {
+  def props(statsEngine: StatsEngine, amqp: AmqpProtocol): Props = Props(classOf[AmqpManage], statsEngine, amqp)
 }

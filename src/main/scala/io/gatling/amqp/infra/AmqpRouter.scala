@@ -5,8 +5,8 @@ import akka.routing._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
+import io.gatling.core.stats.StatsEngine
 
 import scala.collection.mutable
 import scala.util._
@@ -18,7 +18,7 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   private val consumerActors = mutable.HashMap[String, ActorRef]()  // UserId -> ref(AmqpConsumer)
   private def consumerActorFor(session: Session): ActorRef = {
     val name = s"AmqpConsumer-user-${session.userId}"
-    consumerActors.getOrElseUpdate(session.userId, context.actorOf(Props(new AmqpConsumer(name, session)), name))
+    consumerActors.getOrElseUpdate(name, context.actorOf(AmqpConsumer.props(name, session, amqp), name))
   }
 
   override def preStart(): Unit = {
@@ -51,7 +51,8 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
 
   private def addPublisher(i: Int): Unit = {
     val name = s"AmqpPublisher-$i"
-    val ref = context.actorOf(Props(new AmqpPublisher(name)), name)
+    // TODO AmqpPublisher probably needs second parameter (implicit amqp), so provide him it
+    val ref = context.actorOf(AmqpPublisher.props(name, amqp), name)
     context watch ref
     publishers = publishers.addRoutee(ref)
   }

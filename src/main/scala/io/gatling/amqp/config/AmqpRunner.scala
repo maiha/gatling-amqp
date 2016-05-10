@@ -2,8 +2,11 @@ package io.gatling.amqp.config
 
 import akka.actor._
 import io.gatling.core.controller.throttle.Throttler
-import io.gatling.core.result.writer._
+import io.gatling.core.stats.{DataWritersStatsEngine, StatsEngine}
 import pl.project13.scala.rainbow._
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 /**
  * run preparings in console
@@ -12,7 +15,7 @@ trait AmqpRunner { this: AmqpProtocol =>
   def run(): Unit = {
     val system = ActorSystem("AmqpRunner")
     try {
-      val statsEngine: StatsEngine = new DefaultStatsEngine(system, Seq[ActorRef]())
+      val statsEngine: StatsEngine = new DataWritersStatsEngine(system, Seq[ActorRef]())
       val throttler  : Throttler   = null  // just use manage Actor
 
       warmUp(system, statsEngine, throttler)
@@ -26,8 +29,7 @@ trait AmqpRunner { this: AmqpProtocol =>
           logger.error(s"failed: $e".red, e)
 
     } finally {
-      system.shutdown()
-      system.awaitTermination()
-     }
+      Await.result(system.terminate(), Duration.Inf)
+    }
   }
 }

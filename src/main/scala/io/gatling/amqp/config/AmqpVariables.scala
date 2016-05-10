@@ -2,7 +2,7 @@ package io.gatling.amqp.config
 
 import akka.actor._
 import io.gatling.amqp.infra._
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 
 /**
  * preparations for AMQP Server
@@ -29,9 +29,9 @@ trait AmqpVariables { this: AmqpProtocol =>
   protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
     _system = Some(system)
     _stats  = Some(statsEngine)
-    _manage = Some(system.actorOf(Props(new AmqpManage(statsEngine)(this)), "AmqpManage"))
-    _nacker = Some(system.actorOf(Props(new AmqpNacker(statsEngine)(this)), "AmqpNacker"))
-    _router = Some(system.actorOf(Props(new AmqpRouter(statsEngine)(this)), "AmqpRouter"))
-    _tracer = Some(system.actorOf(Props(new AmqpTracer(statsEngine)(this)), "AmqpTracer"))
+    _manage = Some(system.actorOf(AmqpManage.props(statsEngine, this), "AmqpManage"))
+    _nacker = Some(system.actorOf(AmqpManage.props(statsEngine, this), "AmqpNacker"))
+    _router = Some(system.actorOf(AmqpManage.props(statsEngine, this), "AmqpRouter"))
+    _tracer = Some(system.actorOf(AmqpManage.props(statsEngine, this), "AmqpTracer"))
   }
 }
