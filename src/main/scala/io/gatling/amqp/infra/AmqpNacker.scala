@@ -156,3 +156,7 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
     case event: AmqpPublishEvent =>  // ignore other publish events
   }
 }
+
+object AmqpNacker {
+  def props(statsEngine : StatsEngine, amqp: AmqpProtocol) = Props(classOf[AmqpNacker], statsEngine, amqp)
+}

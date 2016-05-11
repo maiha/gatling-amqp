@@ -31,3 +31,7 @@ class AmqpTracer(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
       statsEngine.logResponse(session, title, timings, KO, None, message)
   }
 }
+
+object AmqpTracer {
+  def props(statsEngine : StatsEngine, amqp: AmqpProtocol) = Props(classOf[AmqpTracer], statsEngine, amqp)
+}

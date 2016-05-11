@@ -11,9 +11,9 @@ class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: A
   def build(system: ActorSystem, next: ActorRef, ctx: ScenarioContext): ActorRef = {
     amqpRequestBuilder.build match {
       case req: PublishRequest =>
-        system.actorOf(Props(new AmqpPublishAction(req, next)), actorName("AmqpPublishAction"))
+        system.actorOf(AmqpPublishAction.props(req, next, amqp), actorName("AmqpPublishAction"))
       case req: ConsumeRequest =>
-        system.actorOf(Props(new AmqpConsumeAction(req, next)), actorName("AmqpConsumeAction"))
+        system.actorOf(AmqpPublishAction.props(req, next, amqp), actorName("AmqpConsumeAction"))
     }
   }
 }
