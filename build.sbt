@@ -14,13 +14,8 @@ xerial.sbt.Sonatype.sonatypeRootSettings
 // http://www.scala-sbt.org/0.13/docs/Using-Sonatype.html
 
 publishMavenStyle := true
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
+// just run sbt publish; (or experiment with sbt publishLocaly)
+publishTo := Some(Resolver.file("file",  new File(Path.userHome.absolutePath+"/.m2/repository")))
 
 version := "0.6-SNAPSHOT"
 organization := "sc.ala"
