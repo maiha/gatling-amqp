@@ -145,3 +145,7 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
 }
+
+object AmqpConsumer {
+  def props(name: String, session: Session, amqp: AmqpProtocol) = Props(classOf[AmqpConsumer], name, session, amqp)
+}

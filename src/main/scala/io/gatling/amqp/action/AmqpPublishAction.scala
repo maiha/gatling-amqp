@@ -15,3 +15,7 @@ class AmqpPublishAction(req: PublishRequest, val next: ActorRef)(implicit amqp: 
     next ! session
   }
 }
+
+object AmqpPublishAction {
+  def props(req: AmqpRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpPublishAction], req, next, amqp)
+}
