@@ -1,7 +1,7 @@
 package io.gatling.amqp.infra
 
 import io.gatling.amqp.config._
-import io.gatling.core.result.message.{KO, OK}
+import io.gatling.commons.stats.{OK, KO}
 import io.gatling.core.session.Session
 
 trait Stats { this: AmqpActor =>

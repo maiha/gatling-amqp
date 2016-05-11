@@ -5,8 +5,8 @@ import akka.routing._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
+import io.gatling.core.stats.StatsEngine
 
 import scala.collection.mutable
 import scala.util._
@@ -18,7 +18,10 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   private val consumerActors = mutable.HashMap[String, ActorRef]()  // UserId -> ref(AmqpConsumer)
   private def consumerActorFor(session: Session): ActorRef = {
     val name = s"AmqpConsumer-user-${session.userId}"
-    consumerActors.getOrElseUpdate(session.userId, context.actorOf(AmqpConsumer.props(name, session, amqp), name))
+    consumerActors.getOrElseUpdate(name, {
+      log.trace("Going to create new amqp consumer actor with name ", name.asInstanceOf[AnyRef])
+      context.actorOf(AmqpConsumer.props(name, session, amqp), name)
+    })
   }
 
   override def preStart(): Unit = {
@@ -31,7 +34,7 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
     }
   }
 
-  def receive: Receive = {
+  override def receive: Receive = {
     case m: AmqpPublishRequest =>
       initializePublishersOnce()
       publishers.route(m, sender())

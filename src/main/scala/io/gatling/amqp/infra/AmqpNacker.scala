@@ -4,7 +4,7 @@ import akka.actor._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 import pl.project13.scala.rainbow._
 
 import scala.collection.mutable
@@ -89,7 +89,7 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
     private def bitInfoFor(n: Int): String = s"p=${publishedFact.size},c=${consumedFact.size} map(${map.contains(n)}), bit(${bit.contains(n)}), publishedFact(${publishedFact.contains(n)}), consumedFact(${consumedFact.contains(n)})"
 
     private val debugLogMax = 0  // disable
-    private var debugLogCnt = 0
+    private var debugLogCnt = 100
     private def debugLog(method: String): Unit = {
       debugLogCnt += 1
       if (debugLogCnt <= debugLogMax) {
@@ -153,7 +153,11 @@ class AmqpNacker(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
     case event@ AmqpPublishNacked(publisherName, no, multiple, stoppedAt) =>
       queueFor(publisherName).nacked(no, multiple, stoppedAt)
 
-    case event: AmqpPublishEvent =>  // ignore other publish events
+    case event: AmqpPublishEvent => // ignore other publish events
+      log.warn("ignored event " + event)
+
+    case event =>
+      log.warn("ignored unknown event " + event)
   }
 }
 

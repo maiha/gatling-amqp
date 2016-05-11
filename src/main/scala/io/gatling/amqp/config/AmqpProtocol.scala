@@ -1,14 +1,38 @@
 package io.gatling.amqp.config
 
-import akka.actor._
+import akka.actor.ActorSystem
 import com.rabbitmq.client.ConnectionFactory
 import com.typesafe.scalalogging.StrictLogging
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.config.Protocol
+import io.gatling.core.CoreComponents
+import io.gatling.core.config.GatlingConfiguration
 import io.gatling.core.controller.throttle.Throttler
-import io.gatling.core.result.writer.StatsEngine
-import io.gatling.core.session.Session
+import io.gatling.core.protocol.{Protocol, ProtocolKey}
+import io.gatling.core.stats.StatsEngine
+
+object AmqpProtocol {
+  val AmqpProtocolKey = new ProtocolKey {
+
+    type Protocol = AmqpProtocol
+    type Components = AmqpComponents
+    def protocolClass: Class[io.gatling.core.protocol.Protocol] = classOf[AmqpProtocol].asInstanceOf[Class[io.gatling.core.protocol.Protocol]]
+
+    def defaultValue(configuration: GatlingConfiguration): AmqpProtocol = AmqpProtocol(configuration)
+
+    def newComponents(system: ActorSystem, coreComponents: CoreComponents): AmqpProtocol => AmqpComponents = {
+      amqpProtocol => {
+        val amqpComponents = AmqpComponents(amqpProtocol)
+        amqpProtocol.warmUp(system, coreComponents.statsEngine, coreComponents.throttler)
+        amqpComponents
+      }
+    }
+  }
+
+  def apply(conf: GatlingConfiguration, connection: Connection, preparings: List[AmqpChannelCommand]): AmqpProtocol = new AmqpProtocol(connection, preparings)
+
+  def apply(conf: GatlingConfiguration): AmqpProtocol = new AmqpProtocol(connection = null, preparings = null)
+}
 
 /**
  * Wraps a AMQP protocol configuration
@@ -48,19 +72,10 @@ case class AmqpProtocol(
   /**
    * warmUp AMQP protocol (invoked by gatling framework)
    */
-  override def warmUp(system: ActorSystem, statsEngine: StatsEngine, throttler: Throttler): Unit = {
+  def warmUp(system: ActorSystem, statsEngine: StatsEngine, throttler: Throttler): Unit = {
     logger.info("amqp: warmUp start")
-    super.warmUp(system, statsEngine, throttler)
     setupVariables(system, statsEngine)
     awaitPreparation()
-  }
-
-  /**
-   * finalize user session about AMQP (invoked by gatling framework)
-   */
-  override def userEnd(session: Session): Unit = {
-    awaitTerminationFor(session)
-    super.userEnd(session)
   }
 
   override def toString: String = {

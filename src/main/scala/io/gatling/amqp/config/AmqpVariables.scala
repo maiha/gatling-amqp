@@ -2,7 +2,7 @@ package io.gatling.amqp.config
 
 import akka.actor._
 import io.gatling.amqp.infra._
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 
 /**
  * preparations for AMQP Server

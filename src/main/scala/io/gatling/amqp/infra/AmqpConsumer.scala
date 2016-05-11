@@ -7,7 +7,7 @@ import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
 import io.gatling.core.session.Session
-import io.gatling.core.util.TimeHelper.nowMillis
+import io.gatling.commons.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow._
 
 import scala.collection.mutable
@@ -41,8 +41,8 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     _consumer = Some(new QueueingConsumer(channel))
   }
 
-  private case class ConsumeRequested()
-  private case class BlockingReadOne()
+  private case object ConsumeRequested
+  private case object BlockingReadOne
 
   private def isFinished: Boolean = deliveredCount match {
     case 0 => (lastRequestedAt + initialTimeout < nowMillis)  // wait initial timeout for first publishing
@@ -81,13 +81,13 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
           context.system.scheduler.scheduleOnce(interval, self, mes)  // retry again after interval
       }
 
-    case BlockingReadOne() =>
+    case BlockingReadOne =>
       tryNextDelivery(deliveryTimeout) match {
         case Success(delivered: Delivered)    => deliveryFound(delivered)
         case Failure(DeliveryTimeouted(msec)) => deliveryTimeouted(msec)
         case Failure(error)                   => deliveryFailed(error)
       }
-      self ! BlockingReadOne()
+      self ! BlockingReadOne
 
     case AmqpConsumeRequest(req, session) =>
       if (req.autoAck)
@@ -109,7 +109,7 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     val tag = channel.basicConsume(queueName, true, consumer)
     _consumerTag = Some(tag)
     log.debug(s"Start basicConsume($queueName) [tag:$tag]".yellow)
-    self ! BlockingReadOne()
+    self ! BlockingReadOne
   }
 
   protected def tryNextDelivery(timeoutMsec: Long): Try[Delivered] = Try {

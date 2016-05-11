@@ -6,7 +6,7 @@ scalacOptions := Seq(
   "-encoding", "UTF-8", "-target:jvm-1.7", "-deprecation",
   "-feature", "-unchecked", "-language:implicitConversions", "-language:postfixOps")
 
-val gatlingVersion = "2.2.0-M3"
+val gatlingVersion = "2.2.0"
 
 xerial.sbt.Sonatype.sonatypeRootSettings
 
