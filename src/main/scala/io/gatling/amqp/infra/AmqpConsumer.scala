@@ -6,8 +6,8 @@ import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.commons.util.TimeHelper.nowMillis
 import io.gatling.core.session.Session
+import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow._
 
 import scala.collection.mutable
@@ -144,8 +144,4 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     statsOk(session, startedAt, stoppedAt, "consume")
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
-}
-
-object AmqpConsumer {
-  def props(name: String, session: Session, amqp: AmqpProtocol): Props = Props(classOf[AmqpConsumer], name, session, amqp)
 }

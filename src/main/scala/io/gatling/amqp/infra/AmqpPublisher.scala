@@ -2,13 +2,12 @@ package io.gatling.amqp.infra
 
 import java.util.concurrent.atomic._
 
-import akka.actor.Props
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.commons.util.TimeHelper.nowMillis
 import io.gatling.core.session.Session
+import io.gatling.core.util.TimeHelper.nowMillis
 
 import scala.util._
 
@@ -78,8 +77,4 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
         log.error(s"basicPublish($exchange) failed", e)
     }
   }
-}
-
-object AmqpPublisher {
-  def props(name: String, amqp: AmqpProtocol): Props = Props(classOf[AmqpPublisher], name, amqp)
 }
