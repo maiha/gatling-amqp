@@ -3,7 +3,9 @@ package io.gatling.amqp
 import io.gatling.amqp.Predef._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
+import io.gatling.amqp.infra.AmqpConsumer
 import io.gatling.core.Predef._
+import io.gatling.core.assertion.FailedRequests
 
 import scala.concurrent.duration._
 
@@ -14,7 +16,7 @@ class ConsumingSimulation extends Simulation {
     .auth("guest", "guest")
 
   val scn = scenario("AMQP Consume").exec {
-    amqp("Consume").consume("q1", autoAck = true)
+    amqp("Consume").consume("q1")
   }
 
   setUp(scn.inject(atOnceUsers(1))).protocols(amqpProtocol)
