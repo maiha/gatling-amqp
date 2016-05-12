@@ -141,11 +141,18 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
 //    val message = new String(delivery.getBody())
     import delivered._
     val tag = delivery.getEnvelope.getDeliveryTag
-    statsOk(session, startedAt, stoppedAt, "consume")
+    // TODO perhaps add consume parameter which will make it possible to not to save delivered message to session, as performance can be hurt
+    // save delivered message into session
+    val newSession = session.copy(attributes = session.attributes + (AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY -> delivery))
+    statsOk(newSession, startedAt, stoppedAt, "consume")
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
 }
 
 object AmqpConsumer {
+  /**
+    * Key for session attributes which holds delivered message. It is instance of {@link com.rabbitmq.client.Delivery}.
+    */
+  val LAST_CONSUMED_MESSAGE_KEY = "amqp_last_consumed_msg"
   def props(name: String, session: Session, amqp: AmqpProtocol) = Props(classOf[AmqpConsumer], name, session, amqp)
 }
