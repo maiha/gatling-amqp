@@ -143,7 +143,7 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     val tag = delivery.getEnvelope.getDeliveryTag
     // TODO perhaps add consume parameter which will make it possible to not to save delivered message to session, as performance can be hurt
     // save delivered message into session
-    val newSession = session.copy(attributes = session.attributes + (AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY -> delivery))
+    val newSession = session.set(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY, delivery)
     statsOk(newSession, startedAt, stoppedAt, "consume")
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
