@@ -24,6 +24,10 @@ done
 
 usage_exit() {
   echo "Usage: $0 [-d] (p|c) name" 1>&2
+  echo " -d stands for directory and overrides default location of results \"./stats/$TEST/$NAME\", where:"
+  echo "     - $TEST can be c (consuming simulation) or p (publishing simulation)"
+  echo "     - $NAME is last passed parameter"
+  echo " p|c mandatory parameter for choosing if p (PublishingSimulation) or c (ConsumingSimulation) should be run."
   exit 1
 }
 

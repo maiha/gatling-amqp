@@ -18,4 +18,8 @@ trait Logging extends Actor with LazyLogging {
     log.info(s"amqp: Stop actor `$className' $stopMessage".yellow)
     super.postStop()
   }
+
+  override def receive: Receive = {
+    ???
+  }
 }
