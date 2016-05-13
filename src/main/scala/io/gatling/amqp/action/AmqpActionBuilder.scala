@@ -13,7 +13,7 @@ class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: A
       case req: PublishRequest =>
         system.actorOf(AmqpPublishAction.props(req, next, amqp), actorName("AmqpPublishAction"))
       case req: ConsumeRequest =>
-        system.actorOf(AmqpPublishAction.props(req, next, amqp), actorName("AmqpConsumeAction"))
+        system.actorOf(AmqpConsumeAction.props(req, next, amqp), actorName("AmqpConsumeAction"))
     }
   }
 }

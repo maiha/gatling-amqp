@@ -8,7 +8,7 @@ import io.gatling.amqp.infra.Logging
 import io.gatling.core.action.Chainable
 import io.gatling.core.session.Session
 
-class AmqpPublishAction(req: PublishRequest, val next: ActorRef)(implicit amqp: AmqpProtocol) extends Chainable with Logging {
+class AmqpPublishAction(req: PublishRequest, val next: ActorRef, amqp: AmqpProtocol) extends Chainable with Logging {
   override def execute(session: Session): Unit = {
     amqp.router ! AmqpPublishRequest(req, session)
 
