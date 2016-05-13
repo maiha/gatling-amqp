@@ -15,7 +15,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util._
 
-class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProtocol) extends AmqpActor with Stats {
+class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends AmqpActor with Stats {
   implicit val amqp: AmqpProtocol = _amqp
 
   val checkTerminationInterval = 1.second
@@ -43,7 +43,7 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
   }
 
   private case class ConsumeRequested()
-  private case class BlockingReadOne()
+  private case class BlockingReadOne(session: Session)
 
   private def isFinished: Boolean = deliveredCount match {
     case 0 => (lastRequestedAt + initialTimeout < nowMillis)  // wait initial timeout for first publishing
@@ -82,23 +82,24 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
           context.system.scheduler.scheduleOnce(interval, self, mes)  // retry again after interval
       }
 
-    case BlockingReadOne() =>
+    case BlockingReadOne(session) =>
       tryNextDelivery(deliveryTimeout) match {
-        case Success(delivered: Delivered)    => deliveryFound(delivered)
+        case Success(delivered: Delivered)    => deliveryFound(delivered, session)
         case Failure(DeliveryTimeouted(msec)) => deliveryTimeouted(msec)
         case Failure(error)                   => deliveryFailed(error)
       }
-      self ! BlockingReadOne()
+      self ! BlockingReadOne(session)
 
     case AmqpConsumeRequest(req, session, next) =>
       req match {
-        case req: AsyncConsumerRequest =>
+        case req: AsyncConsumerRequest => {
           //exec next action and asynchronously (from gatling scenario point of view) start consuming everything in queue
           next ! session
           if (req.autoAck)
-            consumeSync(req.queue)
+            consumeSync(req.queue, session)
           else
             consumeAsync(req)
+        }
         case req: ConsumeSingleMessageRequest =>
           consumeSingle(req, session, next);
 
@@ -149,11 +150,11 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     })
   }
 
-  protected def consumeSync(queueName: String): Unit = {
+  protected def consumeSync(queueName: String, session: Session): Unit = {
     val tag = channel.basicConsume(queueName, true, consumer)
     _consumerTag = Some(tag)
     log.debug(s"Start basicConsume($queueName) [tag:$tag]".yellow)
-    self ! BlockingReadOne()
+    self ! BlockingReadOne(session)
   }
 
   protected def tryNextDelivery(timeoutMsec: Long): Try[Delivered] = Try {
@@ -180,7 +181,7 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     log.warn(s"$actorName delivery failed: $err".yellow)
   }
   
-  protected def deliveryFound(delivered: Delivered): Unit = {
+  protected def deliveryFound(delivered: Delivered, session: Session): Unit = {
     deliveredCount += 1
 //    val message = new String(delivery.getBody())
     import delivered._
@@ -195,5 +196,5 @@ object AmqpConsumer {
     * Key for session attributes which holds delivered message. It is instance of {@link com.rabbitmq.client.GetResponse}.
     */
   val LAST_CONSUMED_MESSAGE_KEY = "amqp_last_consumed_msg"
-  def props(name: String, session: Session, amqp: AmqpProtocol) = Props(classOf[AmqpConsumer], name, session, amqp)
+  def props(name: String, amqp: AmqpProtocol) = Props(classOf[AmqpConsumer], name, amqp)
 }

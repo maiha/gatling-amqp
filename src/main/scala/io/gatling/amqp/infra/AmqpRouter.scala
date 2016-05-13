@@ -18,7 +18,7 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   private val consumerActors = mutable.HashMap[String, ActorRef]()  // UserId -> ref(AmqpConsumer)
   private def consumerActorFor(session: Session): ActorRef = {
     val name = s"AmqpConsumer-user-${session.userId}"
-    consumerActors.getOrElseUpdate(session.userId, context.actorOf(AmqpConsumer.props(name, session, amqp), name))
+    consumerActors.getOrElseUpdate(session.userId, context.actorOf(AmqpConsumer.props(name, amqp), name))
   }
 
   override def preStart(): Unit = {
