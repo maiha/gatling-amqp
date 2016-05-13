@@ -5,7 +5,7 @@ import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
-import io.gatling.amqp.data._
+import io.gatling.amqp.data.{WaitTermination, _}
 import io.gatling.amqp.event._
 import io.gatling.core.session.Session
 import io.gatling.core.util.TimeHelper.nowMillis
