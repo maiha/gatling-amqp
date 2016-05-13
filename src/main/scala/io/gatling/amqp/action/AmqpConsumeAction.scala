@@ -10,9 +10,7 @@ import io.gatling.core.session.Session
 
 class AmqpConsumeAction(req: ConsumeRequest, val next: ActorRef)(implicit amqp: AmqpProtocol) extends Chainable with Logging {
   override def execute(session: Session): Unit = {
-    amqp.router ! AmqpConsumeRequest(req, session)
-
-    next ! session
+    amqp.router ! AmqpConsumeRequest(req, session, next)
   }
 }
 

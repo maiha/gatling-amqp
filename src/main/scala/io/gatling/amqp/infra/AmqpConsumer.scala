@@ -1,6 +1,7 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
+import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
@@ -89,11 +90,19 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
       }
       self ! BlockingReadOne()
 
-    case AmqpConsumeRequest(req, session) =>
-      if (req.autoAck)
-        consumeSync(req.queue)
-      else
-        consumeAsync(req)
+    case AmqpConsumeRequest(req, session, next) =>
+      req match {
+        case req: AsyncConsumerRequest =>
+          //exec next action and asynchronously (from gatling scenario point of view) start consuming everything in queue
+          next ! session
+          if (req.autoAck)
+            consumeSync(req.queue)
+          else
+            consumeAsync(req)
+        case req: ConsumeSingleMessageRequest =>
+          consumeSingle(req, session, next);
+
+      }
   }
 
   private def shutdown(): Unit = {
@@ -103,6 +112,41 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     })
     context.become({case _ =>}, discardOld = true)
     context.stop(self)  // ignore all rest messages
+  }
+
+  protected def consumeSingle(req: ConsumeSingleMessageRequest, session: Session, next: ActorRef): Unit = {
+    val startAt = nowMillis
+    channel.basicConsume(req.queue, req.autoAck, new Consumer {
+      override def handleCancel(consumerTag: String): Unit = ???
+
+      override def handleRecoverOk(consumerTag: String): Unit = ???
+
+      override def handleCancelOk(consumerTag: String): Unit = {}
+
+      override def handleDelivery(consumerTag: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]): Unit = {
+        val endAt = nowMillis
+        // save delivered message into session if requested so
+        val newSession = if (req.saveResultToSession) {
+          session.set(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY, new GetResponse(envelope, properties, body, -1))
+        } else {
+          session
+        }
+        statsOk(newSession, startAt, endAt, "consumeSingle")
+        if (req.autoAck == false) {
+          channel.basicAck(envelope.getDeliveryTag, false)
+        }
+        channel.basicCancel(consumerTag)
+        //executing next action have to be AFTER canceling consumer, because it is possible (and likely) that await termination will be faster end stops chanel before
+        next ! newSession
+      }
+
+      override def handleShutdownSignal(consumerTag: String, sig: ShutdownSignalException): Unit = {
+        val endAt = nowMillis
+        statsNg(session, startAt, endAt, "consumeSingle", None, "handleShutdownSignal")
+      }
+
+      override def handleConsumeOk(consumerTag: String): Unit = {}
+    })
   }
 
   protected def consumeSync(queueName: String): Unit = {
@@ -140,17 +184,15 @@ class AmqpConsumer(actorName: String, session: Session)(implicit _amqp: AmqpProt
     deliveredCount += 1
 //    val message = new String(delivery.getBody())
     import delivered._
-    val tag = delivery.getEnvelope.getDeliveryTag
-    // save delivered message into session
-    val newSession = session.set(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY, delivery)
-    statsOk(newSession, startedAt, stoppedAt, "consume")
+    //    val tag = delivery.getEnvelope.getDeliveryTag
+    statsOk(session, startedAt, stoppedAt, "consume")
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
 }
 
 object AmqpConsumer {
   /**
-    * Key for session attributes which holds delivered message. It is instance of {@link com.rabbitmq.client.Delivery}.
+    * Key for session attributes which holds delivered message. It is instance of {@link com.rabbitmq.client.GetResponse}.
     */
   val LAST_CONSUMED_MESSAGE_KEY = "amqp_last_consumed_msg"
   def props(name: String, session: Session, amqp: AmqpProtocol) = Props(classOf[AmqpConsumer], name, session, amqp)

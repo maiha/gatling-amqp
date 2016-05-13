@@ -1,5 +1,6 @@
 package io.gatling.amqp.event
 
+import akka.actor.ActorRef
 import io.gatling.amqp.data._
 import io.gatling.core.session.Session
 
@@ -41,7 +42,8 @@ case class AmqpPublishNacked(publisherName: String, no: Int, multiple: Boolean, 
 abstract class AmqpConsumevent extends AmqpEvent {
   def action: AmqpAction = AmqpConsumeAction
 }
-case class AmqpConsumeRequest(req: ConsumeRequest, session: Session) extends AmqpConsumevent
+
+case class AmqpConsumeRequest(req: ConsumeRequest, session: Session, next: ActorRef) extends AmqpConsumevent
 
 case class AmqpConsuming(consumerName: String, no: Int, startedAt: Long, req: ConsumeRequest, session: Session) extends AmqpConsumevent {
   def eventId: String = s"$consumerName-$no"
