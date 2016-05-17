@@ -133,12 +133,25 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
           session
         }
         statsOk(newSession, startAt, endAt, "consumeSingle")
-        if (req.autoAck == false) {
-          channel.basicAck(envelope.getDeliveryTag, false)
+        try {
+          if (req.autoAck == false) {
+            channel.basicAck(envelope.getDeliveryTag, false)
+            channel.rpc(new Method {
+              override def protocolClassId(): Int = ???
+
+              override def protocolMethodName(): String = ???
+
+              override def protocolMethodId(): Int = ???
+            })
+          }
+          channel.basicCancel(consumerTag)
+        } catch {
+          case ex =>
+            log.warn("Error while ack/cancel msg/consumer. Going to continue with next step.", ex)
+        } finally {
+          //executing next action have to be AFTER canceling consumer, because it is possible (and likely) that await termination will be faster end stops chanel before
+          next ! newSession
         }
-        channel.basicCancel(consumerTag)
-        //executing next action have to be AFTER canceling consumer, because it is possible (and likely) that await termination will be faster end stops chanel before
-        next ! newSession
       }
 
       override def handleShutdownSignal(consumerTag: String, sig: ShutdownSignalException): Unit = {

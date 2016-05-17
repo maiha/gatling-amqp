@@ -7,12 +7,12 @@ import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.result.writer.StatsEngine
-import io.gatling.core.session.Session
+import io.gatling.core.session.{Expression, Session}
 import io.gatling.core.util.TimeHelper.nowMillis
 
 import scala.util._
 
+// next step is called asynchronously from AmqpPublishAction, so this actor cannot change session.
 class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends AmqpActor {
   private val nacker = amqp.nacker
   private val isConfirmMode = amqp.isConfirmMode
@@ -26,7 +26,7 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
 
       channel.addConfirmListener(new ConfirmListener() {
         def handleAck (no: Long, multi: Boolean): Unit = {
-          sendEvent(AmqpPublishAcked (actorName, no.toInt, multi, nowMillis))
+          sendEvent(AmqpPublishAcked(actorName, no.toInt, multi, nowMillis))
         }
 
         def handleNack(no: Long, multi: Boolean): Unit =
@@ -35,7 +35,7 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
     }
   }
 
-  private val localPublishSeqNoCounter = new AtomicInteger(1)
+  private lazy val localPublishSeqNoCounter = new AtomicInteger(1)
   private def getNextPublishSeqNo: Int = {
     if (isConfirmMode)
       channel.getNextPublishSeqNo.toInt
@@ -51,13 +51,20 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
       publishSync(req, session)
   }
 
+  def getData(session: Session, bytes: scala.Either[Expression[Array[Byte]], Array[Byte]]): Array[Byte] = {
+    bytes match {
+      case Left(l) => l.apply(session).get
+      case Right(r) => r
+    }
+  }
+
   protected def publishSync(req: PublishRequest, session: Session): Unit = {
     import req._
-    val startedAt = nowMillis
     val no: Int = getNextPublishSeqNo
     val event = AmqpPublishing(actorName, no, nowMillis, req, session)
     Try {
-      channel.basicPublish(exchange.name, routingKey, props, bytes)
+      val data: Array[Byte] = getData(session, bytes)
+      channel.basicPublish(exchange.name, routingKey, props, data)
     } match {
       case Success(_) =>
         sendEvent(AmqpPublished(actorName, no, nowMillis, event))
@@ -72,7 +79,7 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
     val no: Int = getNextPublishSeqNo
     sendEvent(AmqpPublishing(actorName, no, nowMillis, req, session))
     try {
-      channel.basicPublish(exchange.name, routingKey, props, bytes)
+      channel.basicPublish(exchange.name, routingKey, props, getData(session, bytes))
     } catch {
       case e: Exception =>
         sendEvent(AmqpPublishFailed(actorName, no, nowMillis, e))

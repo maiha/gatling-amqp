@@ -42,13 +42,17 @@ object AmqpManage {
     triedOk match {
       case Failure(ex) =>
         ex match {
-          case ex: IOException if Try(ex.getCause.getMessage).map(_.contains("reply-text=PRECONDITION_FAILED")).getOrElse(false) =>
+          case ex: IOException if Try(ex.getCause.getMessage).map(msg =>
+            msg.contains("reply-text=PRECONDITION_FAILED") &&
+              msg.contains("but current is")
+          ).getOrElse(false) =>
             //channel error; protocol method: #method<channel.close>(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'auto_delete' for exchange 'luvar@local' in vhost '/': received 'true' but current is 'false', class-id=40, method-id=10)
             log.error("Executing " + operation + " failed. Operating on item which is already there, but with different parameters! You can delete " +
-              "given item and run simulation again, or change parameters of item in simulation to match existing one.", ex.getCause)
+              "given item and run simulation again, or change parameters of item in simulation to match existing one. Going to rethrow ex.", ex.getCause)
           case ex =>
-            log.error("Unexpected failure!", ex)
+            log.error("Unexpected failure during execution of " + operation + "! Going to rethrow ex.", ex)
         }
+        throw ex
       case _ =>
     }
   }
