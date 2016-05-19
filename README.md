@@ -148,7 +148,7 @@ users in parallel
     amqp("Consume")
       .consumeSingle("q1", saveResultToSession = true)
       .exec(session => {
-        val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).asOption[GetResponse]
+        val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).asOption[DeliveredMsg]
         println("Response=" + msg)
         println("ResponseBody=" + msg.map(m => new String(m.getBody, "UTF-8")))
         // drop possibly large response from session

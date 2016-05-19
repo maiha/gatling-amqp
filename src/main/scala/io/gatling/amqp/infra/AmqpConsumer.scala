@@ -2,11 +2,11 @@ package io.gatling.amqp.infra
 
 import akka.actor._
 import com.rabbitmq.client.AMQP.BasicProperties
-import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data.{WaitTermination, _}
 import io.gatling.amqp.event._
+import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.session.Session
 import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow._
@@ -34,7 +34,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
 
   protected override def stopMessage: String = s"(delivered: $deliveredCount)"
 
-  case class Delivered(startedAt: Long, stoppedAt: Long, delivery: Delivery)
+  case class Delivered(startedAt: Long, stoppedAt: Long, delivery: DeliveredMsg)
   case class DeliveryTimeouted(msec: Long) extends RuntimeException
 
   override def preStart(): Unit = {
@@ -65,7 +65,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
   private case class CheckTermination(interval: FiniteDuration)
 
   override def receive = {
-    case mes@ WaitTermination(session) =>      
+    case mes@WaitTermination(session) =>
       startCheckTerminationOnce()
       waitTermination(sender(), mes)
 
@@ -115,9 +115,43 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     context.stop(self)  // ignore all rest messages
   }
 
+  /**
+    * Method will try to use basicConsume, which is nonblocking "get if any" style method. It returns null value, if there
+    * is no message in queue. If basicConsume does not return message, method will register asynchronous consumer which
+    * will consume one message and than stops itself. This occasionally leads to problem.
+    *
+    * @param req
+    * @param session
+    * @param next
+    */
   protected def consumeSingle(req: ConsumeSingleMessageRequest, session: Session, next: ActorRef): Unit = {
     val startAt = nowMillis
-    channel.basicConsume(req.queue, req.autoAck, new Consumer {
+    val getSingle: GetResponse = channel.basicGet(req.queue, req.autoAck)
+
+    def processResponse(consumedBy: String, consumerTag: Option[String], envelope: Envelope, properties: BasicProperties, body: Array[Byte]) = {
+      val endAt = nowMillis
+      // save delivered message into session if requested so
+      val newSession = if (req.saveResultToSession) {
+        session.set(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY, DeliveredMsg(envelope, properties, body))
+      } else {
+        session
+      }
+      statsOk(newSession, startAt, endAt, "consumeSingleBy" + consumedBy)
+      try {
+        if (req.autoAck == false) {
+          channel.basicAck(envelope.getDeliveryTag, false)
+        }
+        consumerTag.map(channel.basicCancel(_))
+      } catch {
+        case ex: Throwable =>
+          log.warn("Error while ack/cancel msg/consumer. Going to continue with next step.", ex)
+      } finally {
+        //executing next action have to be AFTER canceling consumer, because it is possible (and likely) that await termination will be faster end stops chanel before
+        next ! newSession
+      }
+    }
+
+    val singleConsumer: Consumer = new Consumer {
       override def handleCancel(consumerTag: String): Unit = ???
 
       override def handleRecoverOk(consumerTag: String): Unit = ???
@@ -125,33 +159,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
       override def handleCancelOk(consumerTag: String): Unit = {}
 
       override def handleDelivery(consumerTag: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]): Unit = {
-        val endAt = nowMillis
-        // save delivered message into session if requested so
-        val newSession = if (req.saveResultToSession) {
-          session.set(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY, new GetResponse(envelope, properties, body, -1))
-        } else {
-          session
-        }
-        statsOk(newSession, startAt, endAt, "consumeSingle")
-        try {
-          if (req.autoAck == false) {
-            channel.basicAck(envelope.getDeliveryTag, false)
-            channel.rpc(new Method {
-              override def protocolClassId(): Int = ???
-
-              override def protocolMethodName(): String = ???
-
-              override def protocolMethodId(): Int = ???
-            })
-          }
-          channel.basicCancel(consumerTag)
-        } catch {
-          case ex =>
-            log.warn("Error while ack/cancel msg/consumer. Going to continue with next step.", ex)
-        } finally {
-          //executing next action have to be AFTER canceling consumer, because it is possible (and likely) that await termination will be faster end stops chanel before
-          next ! newSession
-        }
+        processResponse("Consumer", Some(consumerTag), envelope, properties, body)
       }
 
       override def handleShutdownSignal(consumerTag: String, sig: ShutdownSignalException): Unit = {
@@ -160,7 +168,13 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
       }
 
       override def handleConsumeOk(consumerTag: String): Unit = {}
-    })
+    }
+
+    if (getSingle == null) {
+      channel.basicConsume(req.queue, req.autoAck, singleConsumer)
+    } else {
+      processResponse("BasicConsume", None, getSingle.getEnvelope, getSingle.getProps, getSingle.getBody)
+    }
   }
 
   protected def consumeSync(queueName: String, session: Session): Unit = {
@@ -172,7 +186,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
 
   protected def tryNextDelivery(timeoutMsec: Long): Try[Delivered] = Try {
     lastRequestedAt = nowMillis
-    val delivery: Delivery = consumer.nextDelivery(timeoutMsec)
+    val delivery: DeliveredMsg = DeliveredMsg(consumer.nextDelivery(timeoutMsec))
     if (delivery == null) {
       throw DeliveryTimeouted(timeoutMsec)
     }
@@ -189,11 +203,11 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     if (! notConsumedYet)
       log.debug(s"$actorName delivery timeouted($msec)")
   }
-  
+
   protected def deliveryFailed(err: Throwable): Unit = {
     log.warn(s"$actorName delivery failed: $err".yellow)
   }
-  
+
   protected def deliveryFound(delivered: Delivered, session: Session): Unit = {
     deliveredCount += 1
 //    val message = new String(delivery.getBody())
@@ -210,4 +224,20 @@ object AmqpConsumer {
     */
   val LAST_CONSUMED_MESSAGE_KEY = "amqp_last_consumed_msg"
   def props(name: String, amqp: AmqpProtocol) = Props(classOf[AmqpConsumer], name, amqp)
+
+  /**
+    * Simple case class holding delivered message. It holds exactly same things as in {@link com.rabbitmq.client.QueueingConsumer.Delivery}
+    * and nearly all information from {@link com.rabbitmq.client.GetResponse}.
+    *
+    * @param envelope
+    * @param properties
+    * @param body
+    */
+  case class DeliveredMsg(envelope: Envelope, properties: AMQP.BasicProperties, body: Array[Byte])
+
+  object DeliveredMsg {
+    def apply(delivery: com.rabbitmq.client.QueueingConsumer.Delivery): DeliveredMsg = new DeliveredMsg(delivery.getEnvelope, delivery.getProperties, delivery.getBody)
+
+    def apply(getMsg: com.rabbitmq.client.GetResponse): DeliveredMsg = new DeliveredMsg(getMsg.getEnvelope, getMsg.getProps, getMsg.getBody)
+  }
 }

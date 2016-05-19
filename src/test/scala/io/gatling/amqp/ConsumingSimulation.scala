@@ -1,9 +1,9 @@
 package io.gatling.amqp
 
-import com.rabbitmq.client.QueueingConsumer.Delivery
 import io.gatling.amqp.Predef._
 import io.gatling.amqp.config._
 import io.gatling.amqp.infra.AmqpConsumer
+import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.Predef._
 
 class ConsumingSimulation extends Simulation {
@@ -21,12 +21,12 @@ class ConsumingSimulation extends Simulation {
     }.doIf(printConsumedMessages) {
     // just for printing consumed messages
     exec(session => {
-      val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).asOption[Delivery]
+      val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).asOption[DeliveredMsg]
       println("consumed first msg = " + msg)
       session
     }).exec {
       //consume all messages which have left in queue
-      amqp("Consume").consumeSingle("q1")
+      amqp("Consume").consume("q1")
     }
   }
 
