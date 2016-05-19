@@ -79,7 +79,8 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
     val no: Int = getNextPublishSeqNo
     sendEvent(AmqpPublishing(actorName, no, nowMillis, req, session))
     try {
-      channel.basicPublish(exchange.name, routingKey, props, getData(session, bytes))
+      val data: Array[Byte] = getData(session, bytes)
+      channel.basicPublish(exchange.name, routingKey, props, data)
     } catch {
       case e: Exception =>
         sendEvent(AmqpPublishFailed(actorName, no, nowMillis, e))
