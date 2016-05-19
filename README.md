@@ -241,7 +241,7 @@ Benchmark
 Library
 =======
 
-- amqp-client-3.5.3 (3.5.7 is also known to be working)
+- amqp-client-3.6.1 (3.5.1, 3.5.3 and 3.5.7 is also known to be working)
 - gatling-2.2.0-M3 (milestone version)
 
 

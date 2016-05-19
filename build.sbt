@@ -40,5 +40,5 @@ pomExtra := (
 
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
-libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.3"
+libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.6.1"
 libraryDependencies += "pl.project13.scala" %% "rainbow" % "0.2"
