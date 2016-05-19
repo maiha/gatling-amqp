@@ -3,7 +3,6 @@ package io.gatling.amqp.action
 import akka.actor._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import io.gatling.amqp.event.AmqpConsumeAction
 import io.gatling.amqp.request.builder._
 import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.structure.ScenarioContext
