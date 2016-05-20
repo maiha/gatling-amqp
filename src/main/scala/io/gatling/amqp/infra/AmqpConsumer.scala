@@ -2,6 +2,7 @@ package io.gatling.amqp.infra
 
 import akka.actor._
 import com.rabbitmq.client.AMQP.BasicProperties
+import com.rabbitmq.client.QueueingConsumer.Delivery
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
@@ -146,13 +147,12 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
 
   protected def tryNextDelivery(timeoutMsec: Long): Try[Delivered] = Try {
     lastRequestedAt = nowMillis
-    val delivery: DeliveredMsg = DeliveredMsg(consumer.nextDelivery(timeoutMsec))
-    if (delivery == null) {
+    val nextDelivery: Delivery = consumer.nextDelivery(timeoutMsec)
+    if (nextDelivery == null) {
       throw DeliveryTimeouted(timeoutMsec)
     }
-
     lastDeliveredAt = nowMillis
-    Success(Delivered(lastRequestedAt, lastDeliveredAt, delivery))
+    Success(Delivered(lastRequestedAt, lastDeliveredAt, DeliveredMsg(nextDelivery)))
   }.flatten
 
   protected def consumeAsync(req: ConsumeRequest): Unit = {
