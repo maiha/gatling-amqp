@@ -17,6 +17,14 @@ case class AmqpProtocolBuilder(
   def host(h: String)     = copy(connection = connection.copy(host = h))
   def port(p: Int)        = copy(connection = connection.copy(port = p))
   def vhost(v: String)    = copy(connection = connection.copy(vhost = v))
+
+  /**
+    * Number of publishers which will be used to publish messages. Round robin algorithm is used to publish messages
+    * through pool of publishers.
+    *
+    * @param p number of publishers to pre-create
+    * @return
+    */
   def poolSize(p: Int)    = copy(connection = connection.copy(poolSize = p))
   def user(u: String)     = copy(connection = connection.copy(user = u))
   def password(p: String) = copy(connection = connection.copy(password = p))
