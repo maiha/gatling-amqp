@@ -8,7 +8,7 @@ import io.gatling.core.session._
 case class PublishRequest(
                            exchange: Expression[String],
                            routingKey: Expression[String],
-                           props: BasicProperties,
+                           props: Expression[BasicProperties],
                            bytes: Either[Expression[Array[Byte]], Array[Byte]]
 ) extends AmqpRequest {
 
@@ -28,7 +28,7 @@ object PublishRequest {
   def apply(exchangeName: Expression[String], bytes: String): PublishRequest =
     apply(exchangeName, Right(bytes))
 
-  def apply(exchangeName: Expression[String], bodyStr: Either[Expression[String], String], properties: BasicProperties = props()): PublishRequest = {
+  def apply(exchangeName: Expression[String], bodyStr: Either[Expression[String], String], properties: Expression[BasicProperties] = props()): PublishRequest = {
     val b = bodyStr match {
       case Left(l) => Left(l.map(_.getBytes("UTF-8")))
       case Right(r) => Right(r.getBytes("UTF-8"))

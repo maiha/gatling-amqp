@@ -41,7 +41,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
   override def receive = super.receive.orElse {
     case BlockingReadOne(session) =>
       tryNextDelivery(deliveryTimeout) match {
-        case Success(delivered: Delivered)    => deliveryFound(delivered, session)
+        case Success(delivered: Delivered) => deliveryFound(delivered, session, "consume")
         case Failure(DeliveryTimeouted(msec)) => deliveryTimeouted(msec)
         case Failure(error)                   => deliveryFailed(error)
       }
@@ -89,7 +89,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     val startAt = nowMillis
     val getSingle: GetResponse = channel.basicGet(req.queue, req.autoAck)
 
-    def processResponse(consumedBy: String, consumerTag: Option[String], envelope: Envelope, properties: BasicProperties, body: Array[Byte]) = {
+    def processResponse(consumedBy: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]) = {
       val endAt = nowMillis
       // save delivered message into session if requested so
       val newSession = if (req.saveResultToSession) {
@@ -102,7 +102,6 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
         if (req.autoAck == false) {
           channel.basicAck(envelope.getDeliveryTag, false)
         }
-        consumerTag.map(channel.basicCancel(_))
       } catch {
         case ex: Throwable =>
           log.warn("Error while ack/cancel msg/consumer. Going to continue with next step.", ex)
@@ -112,29 +111,24 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
       }
     }
 
-    val singleConsumer: Consumer = new Consumer {
-      override def handleCancel(consumerTag: String): Unit = ???
-
-      override def handleRecoverOk(consumerTag: String): Unit = ???
-
-      override def handleCancelOk(consumerTag: String): Unit = {}
-
-      override def handleDelivery(consumerTag: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]): Unit = {
-        processResponse("Consumer", Some(consumerTag), envelope, properties, body)
-      }
-
-      override def handleShutdownSignal(consumerTag: String, sig: ShutdownSignalException): Unit = {
-        val endAt = nowMillis
-        statsNg(session, startAt, endAt, "consumeSingle", None, "handleShutdownSignal")
-      }
-
-      override def handleConsumeOk(consumerTag: String): Unit = {}
-    }
-
     if (getSingle == null) {
-      channel.basicConsume(req.queue, req.autoAck, singleConsumer)
+      // TODO introduce req.delivery timeout
+      tryNextDelivery(deliveryTimeout) match {
+        case Success(delivered: Delivered) =>
+          processResponse("Consumer", delivered.delivery.envelope, delivered.delivery.properties, delivered.delivery.body)
+        case Failure(ex) =>
+          val endAt = nowMillis
+          ex match {
+            case DeliveryTimeouted(msec) =>
+              statsNg(session, startAt, endAt, "consumeSingle", None, s"DeliveryTimeouted($msec)")
+              deliveryTimeouted(msec)
+            case error =>
+              statsNg(session, startAt, endAt, "consumeSingle", None, s"error=${error.getMessage}")
+              deliveryFailed(error)
+          }
+      }
     } else {
-      processResponse("BasicConsume", None, getSingle.getEnvelope, getSingle.getProps, getSingle.getBody)
+      processResponse("BasicConsume", getSingle.getEnvelope, getSingle.getProps, getSingle.getBody)
     }
   }
 
@@ -168,12 +162,12 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     log.warn(s"$actorName delivery failed: $err".yellow)
   }
 
-  protected def deliveryFound(delivered: Delivered, session: Session): Unit = {
+  protected def deliveryFound(delivered: Delivered, session: Session, description: String): Unit = {
     deliveredCount += 1
 //    val message = new String(delivery.getBody())
     import delivered._
     //    val tag = delivery.getEnvelope.getDeliveryTag
-    statsOk(session, startedAt, stoppedAt, "consume")
+    statsOk(session, startedAt, stoppedAt, description)
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
 }

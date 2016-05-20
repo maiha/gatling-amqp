@@ -1,5 +1,8 @@
 package io.gatling.amqp
 
+import java.util.concurrent.atomic.AtomicLong
+
+import com.rabbitmq.client.AMQP.BasicProperties
 import io.gatling.amqp.Predef._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data.{AmqpExchange, AmqpQueue}
@@ -18,7 +21,11 @@ import scala.concurrent.duration._
 class RpcSimulation extends Simulation {
   private val log = LoggerFactory.getLogger(classOf[RpcSimulation])
 
-  val rpcClientsCount = 1
+  val USERNAME_KEY: String = "userName"
+  val counter = new AtomicLong(0)
+  val feeder = Iterator.continually(Map(USERNAME_KEY -> ("rpcClient-" + counter.getAndIncrement().toString)))
+
+  val rpcClientsCount = 2
   val rpcCallsPerUser = 100
   val echoCount = rpcClientsCount * rpcCallsPerUser
 
@@ -52,22 +59,41 @@ class RpcSimulation extends Simulation {
               replyTo
             },
             Left(session =>
-              session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg].body))
+              session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg].body),
+            session => {
+              val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg]
+              val correlationId = msg.properties.getCorrelationId
+              val prop = new BasicProperties.Builder
+              if (correlationId != null && correlationId.nonEmpty) {
+                log.info("Going to set correlation id to response. correlationId={}.", correlationId.yellow.asInstanceOf[Any])
+                prop.correlationId(correlationId)
+              }
+              prop.build()
+            })
         // we need to wait until all publish requests are actually published (publish does not block/wait) before ending scenario (we get Can't handle ResponseMessage ... in state Terminated)
       }
     }.pause(1500 millisecond)
 
   val testingEchoServiceScenario = scenario(s"Testing Echo service with $rpcCallsPerUser messages")
+    .feed(feeder)
     .repeat(rpcCallsPerUser, "counterEchoTest") {
       exec(amqp("echo number ${counterEchoTest} request publish")
-        .publish(echoExchange.name, Left("Test message, echo number ${counterEchoTest}"), Some(requestersQueue.name)))
+        .rpcCall(echoExchange.name, Left("Test message, echo number ${counterEchoTest}. My name is ${" + USERNAME_KEY + "}"), Some(requestersQueue.name)))
         .exec(amqp("echo number ${counterEchoTest} consume single reply")
           .consumeSingle(requestersQueue.name, saveResultToSession = true))
         .exec(session => {
-          val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).asOption[DeliveredMsg]
-          log.info("consumed msg={}.", msg.asInstanceOf[Any])
-          session
-        })
+          val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg]
+          val msgBody = new String(msg.body)
+          val user = session(USERNAME_KEY).as[String]
+          if (false == msgBody.contains(user)) {
+            log.warn("consumed msgBody={} as response for client {}. (this reply is not mine!)",
+              msgBody.red.asInstanceOf[Any], user.blue.asInstanceOf[Any])
+            session.markAsFailed
+          } else {
+            log.debug("consumed msgBody={} as response for client {}.", msgBody.asInstanceOf[Any], user)
+            session
+          }
+        }).exitHereIfFailed
     }
 
   setUp(

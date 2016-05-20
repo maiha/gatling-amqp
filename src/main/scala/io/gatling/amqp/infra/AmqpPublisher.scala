@@ -3,6 +3,7 @@ package io.gatling.amqp.infra
 import java.util.concurrent.atomic._
 
 import akka.actor.Props
+import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
@@ -66,7 +67,8 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
       val data: Array[Byte] = getData(session, bytes)
       val exchangeStr: String = exchange(session).get
       val routingKeyStr: String = routingKey(session).get
-      channel.basicPublish(exchangeStr, routingKeyStr, props, data)
+      val propertiesReal: BasicProperties = props(session).get
+      channel.basicPublish(exchangeStr, routingKeyStr, propertiesReal, data)
       //log.error("message {} published to exchange {}, routing queue {}. (empty exchange with queue in routing key causes publishing directly to queue)", data.toString.blue, exchangeStr.yellow, routingKeyStr.cyan) // import pl.project13.scala.rainbow._
     } match {
       case Success(_) =>
@@ -85,7 +87,8 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
       val data: Array[Byte] = getData(session, bytes)
       val exchangeStr: String = exchange(session).get
       val routingKeyStr: String = routingKey(session).get
-      channel.basicPublish(exchangeStr, routingKeyStr, props, data)
+      val propertiesReal: BasicProperties = props(session).get
+      channel.basicPublish(exchangeStr, routingKeyStr, propertiesReal, data)
       //log.error("message {} published to exchange {}, routing queue {}. (empty exchange with queue in routing key causes publishing directly to queue)", data.toString.blue, exchangeStr.yellow, routingKeyStr.cyan) // import pl.project13.scala.rainbow._
     } catch {
       case e: Exception =>
