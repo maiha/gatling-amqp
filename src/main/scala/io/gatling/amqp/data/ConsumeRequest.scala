@@ -11,9 +11,18 @@ case class AsyncConsumerRequest(
 case class ConsumeSingleMessageRequest(
                                         queue: String,
                                         autoAck: Boolean = true,
-  /**
-    * If set to true, session will contain key {@link io.gatling.amqp.infra.AmqpConsumer#LAST_CONSUMED_MESSAGE_KEY} with value
-    * of last delivered (consumed) message.
-    */
-  saveResultToSession: Boolean = false
+
+                                        /**
+                                          * If set to true, session will contain key {@link io.gatling.amqp.infra.AmqpConsumer#LAST_CONSUMED_MESSAGE_KEY} with value
+                                          * of last delivered (consumed) message.
+                                          */
+                                        saveResultToSession: Boolean = false,
+
+                                        /**
+                                          * If you fill in some parameter, AmqpConsumer actor will consume all messages and than route received messages acording
+                                          * correlationId parameter to right next action.
+                                          *
+                                          * NOTE: If you use this parameter on single step, you should not use general {@link AsyncConsumerRequest}, because you will probably miss some message and this request will stuck forever.
+                                          */
+                                        correlationId: Option[String] = None
                                       ) extends ConsumeRequest

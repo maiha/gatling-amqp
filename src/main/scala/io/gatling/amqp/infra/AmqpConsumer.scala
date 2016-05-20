@@ -4,33 +4,20 @@ import akka.actor._
 import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client._
 import io.gatling.amqp.config._
-import io.gatling.amqp.data.{WaitTermination, _}
+import io.gatling.amqp.data._
 import io.gatling.amqp.event._
 import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.session.Session
 import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow._
 
-import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.util._
 
-class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends AmqpActor with Stats {
-  implicit val amqp: AmqpProtocol = _amqp
-
-  val checkTerminationInterval = 1.second
-  val initialTimeout  = 60 * 1000  // msec (1 min)
-  val deliveryTimeout = 1 * 1000  // msec
-  val runningTimeout  = 2 * 1000  // assumes that no messages queued when this time past from lastDeliveredAt
+class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends AmqpConsumerBase(actorName) {
 
   private var _consumer: Option[QueueingConsumer] = None
   private def consumer = _consumer.getOrElse{ throw new RuntimeException("[bug] consumer is not defined yet") }
   private var _consumerTag: Option[String] = None
-
-  private var lastRequestedAt: Long = 0
-  private var lastDeliveredAt: Long = 0
-  private var deliveredCount : Long = 0
-  private def notConsumedYet: Boolean = deliveredCount == 0
 
   protected override def stopMessage: String = s"(delivered: $deliveredCount)"
 
@@ -45,43 +32,12 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
   private case class ConsumeRequested()
   private case class BlockingReadOne(session: Session)
 
-  private def isFinished: Boolean = deliveredCount match {
+  override def isFinished: Boolean = deliveredCount match {
     case 0 => (lastRequestedAt + initialTimeout < nowMillis)  // wait initial timeout for first publishing
     case n => (lastDeliveredAt + runningTimeout < nowMillis)  // wait running timeout for last publishing
   }
 
-  private val terminationWaitingActors = mutable.HashMap[ActorRef, Any]()
-  private def waitTermination(ref: ActorRef, mes: Any) = terminationWaitingActors.put(ref, mes)
-  private def startCheckTerminationOnce(): Unit = {
-    if (terminationWaitingActors.isEmpty)
-      self ! CheckTermination(checkTerminationInterval)
-  }
-
-  private def notifyTermination(msg: String): Unit = {
-    terminationWaitingActors.foreach{ case (ref, mes) => ref ! Success(msg) }
-    terminationWaitingActors.clear
-  }
-
-  private case class CheckTermination(interval: FiniteDuration)
-
-  override def receive = {
-    case mes@WaitTermination(session) =>
-      startCheckTerminationOnce()
-      waitTermination(sender(), mes)
-
-    case mes@ CheckTermination(interval) =>
-      isFinished match {
-        case true =>
-          val msg = "all message have been delivered"
-          log.debug(msg.green)
-          notifyTermination(msg)
-          shutdown()
-        case false =>
-          if (! notConsumedYet)
-            log.debug(s"CheckTermination: waiting delivered. re-check after($interval)".yellow)
-          context.system.scheduler.scheduleOnce(interval, self, mes)  // retry again after interval
-      }
-
+  override def receive = super.receive.orElse {
     case BlockingReadOne(session) =>
       tryNextDelivery(deliveryTimeout) match {
         case Success(delivered: Delivered)    => deliveryFound(delivered, session)
@@ -92,21 +48,25 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
 
     case AmqpConsumeRequest(req, session, next) =>
       req match {
-        case req: AsyncConsumerRequest => {
+        case req: AsyncConsumerRequest if req.autoAck == true => {
           //exec next action and asynchronously (from gatling scenario point of view) start consuming everything in queue
           next ! session
-          if (req.autoAck)
-            consumeSync(req.queue, session)
-          else
-            consumeAsync(req)
+          consumeSync(req.queue, session)
         }
-        case req: ConsumeSingleMessageRequest =>
+        case req: AsyncConsumerRequest if req.autoAck == false => {
+          //exec next action and asynchronously (from gatling scenario point of view) start consuming everything in queue
+          next ! session
+          consumeAsync(req)
+        }
+        case req: ConsumeSingleMessageRequest if req.correlationId.isEmpty =>
           consumeSingle(req, session, next);
 
+        case req: ConsumeSingleMessageRequest if req.correlationId.isDefined =>
+          throw new RuntimeException("This actor is not right one for this type of command")
       }
   }
 
-  private def shutdown(): Unit = {
+  override def shutdown(): Unit = {
     _consumerTag.foreach(tag => {
       channel.basicCancel(tag)
       log.debug(s"Cancel consumer($tag)".yellow)
