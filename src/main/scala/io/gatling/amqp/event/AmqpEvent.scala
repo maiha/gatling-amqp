@@ -45,6 +45,16 @@ abstract class AmqpConsumevent extends AmqpEvent {
 
 case class AmqpConsumeRequest(req: ConsumeRequest, session: Session, next: ActorRef) extends AmqpConsumevent
 
+/**
+  * [[io.gatling.amqp.infra.AmqpRouter]] should create just single instance of [[io.gatling.amqp.infra.AmqpConsumerCorrelation]]
+  * upon this request instead of per session creation of actors as for [[AmqpConsumeRequest]].
+  *
+  * @param req
+  * @param session
+  * @param next
+  */
+case class AmqpSingleConsumerPerStepRequest(req: ConsumeRequest, session: Session, next: ActorRef) extends AmqpConsumevent
+
 case class AmqpConsuming(consumerName: String, no: Int, startedAt: Long, req: ConsumeRequest, session: Session) extends AmqpConsumevent {
   def eventId: String = s"$consumerName-$no"
 }

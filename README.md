@@ -253,6 +253,7 @@ TODO
 - make Builder mutable
 - mandatory
 - consume action (manual ack)
+- consume followed by publish and than pause will cause to report publish times containing also pause time (RpcSimmulation with pause after each publish shows it) 
 
 License
 =======

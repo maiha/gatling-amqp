@@ -8,13 +8,18 @@ import io.gatling.core.Predef._
 import scala.concurrent.duration._
 
 class PublishingSimulation extends Simulation {
+  private val exchangePubSim: AmqpExchange = exchange("gatlingPublishingSimulation", "fanout", durable = true, autoDelete = false)
+  private val queueQ1: AmqpQueue = queue("q1", durable = true, autoDelete = false)
   implicit val amqpProtocol: AmqpProtocol = amqp
     .host("localhost")
     .port(5672)
     // .vhost("/")
     .auth("guest", "guest")
     .poolSize(3)
-    .declare(queue("q1", durable = true, autoDelete = false))
+    .declare(exchangePubSim)
+    .declare(queueQ1)
+    .bind(exchangePubSim, queueQ1)
+
     .confirmMode()
 
   // val body = Array.fill[Byte](1000*10)(1) // 1KB data for test

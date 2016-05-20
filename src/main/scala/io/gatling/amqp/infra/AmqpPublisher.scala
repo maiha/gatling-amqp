@@ -64,7 +64,10 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
     val event = AmqpPublishing(actorName, no, nowMillis, req, session)
     Try {
       val data: Array[Byte] = getData(session, bytes)
-      channel.basicPublish(exchange.name, routingKey, props, data)
+      val exchangeStr: String = exchange(session).get
+      val routingKeyStr: String = routingKey(session).get
+      channel.basicPublish(exchangeStr, routingKeyStr, props, data)
+      //log.error("message {} published to exchange {}, routing queue {}. (empty exchange with queue in routing key causes publishing directly to queue)", data.toString.blue, exchangeStr.yellow, routingKeyStr.cyan) // import pl.project13.scala.rainbow._
     } match {
       case Success(_) =>
         sendEvent(AmqpPublished(actorName, no, nowMillis, event))
@@ -80,7 +83,10 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
     sendEvent(AmqpPublishing(actorName, no, nowMillis, req, session))
     try {
       val data: Array[Byte] = getData(session, bytes)
-      channel.basicPublish(exchange.name, routingKey, props, data)
+      val exchangeStr: String = exchange(session).get
+      val routingKeyStr: String = routingKey(session).get
+      channel.basicPublish(exchangeStr, routingKeyStr, props, data)
+      //log.error("message {} published to exchange {}, routing queue {}. (empty exchange with queue in routing key causes publishing directly to queue)", data.toString.blue, exchangeStr.yellow, routingKeyStr.cyan) // import pl.project13.scala.rainbow._
     } catch {
       case e: Exception =>
         sendEvent(AmqpPublishFailed(actorName, no, nowMillis, e))

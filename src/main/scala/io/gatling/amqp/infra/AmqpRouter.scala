@@ -22,21 +22,11 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   }
 
   // create one consumer for one session
-  private val consumerActors = mutable.HashMap[String, ActorRef]()  // UserId -> ref(AmqpConsumer)
-  private def consumerActorFor(session: Session, req: ConsumeRequest): ActorRef = {
+  private val consumerActors = mutable.HashMap[String, ActorRef]() // UserId -> ref(AmqpConsumer)
+
+  private def consumerActorFor(session: Session): ActorRef = {
     val name = s"AmqpConsumer-user-${session.userId}"
-    consumerActors.getOrElseUpdate(session.userId, {
-      req match {
-        case null =>
-          log.warn("THIS SHOULD NOT HAPPEN! Check code. I will continue with returning some dummy actor, which will " +
-            "be terminated just after its creation. Nothing wrong (just performance) will happen.")
-          context.actorOf(AmqpConsumer.props(name, amqp), name)
-        case ConsumeSingleMessageRequest(_, _, _, Some(_)) =>
-          context.actorOf(AmqpConsumerCorrelation.props(name, amqp), name)
-        case _ =>
-          context.actorOf(AmqpConsumer.props(name, amqp), name)
-      }
-    })
+    consumerActors.getOrElseUpdate(session.userId, context.actorOf(AmqpConsumer.props(name, amqp), name))
   }
 
   def receive: Receive = {
@@ -44,16 +34,16 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
       publishers.route(m, sender())
 
     case m: AmqpConsumeRequest =>
-      consumerActorFor(m.session, m.req).forward(m)
+      consumerActorFor(m.session).forward(m)
 
     case m: WaitTermination if consumerActors.isEmpty =>
       sender() ! Success("no consumers")
 
     case m: WaitTermination =>
-      consumerActorFor(m.session, null).forward(m)
+      consumerActorFor(m.session).forward(m)
   }
 }
 
 object AmqpRouter {
-  def props(statsEngine : StatsEngine, amqp: AmqpProtocol) = Props(classOf[AmqpRouter], statsEngine, amqp)
+  def props(statsEngine: StatsEngine, amqp: AmqpProtocol) = Props(classOf[AmqpRouter], statsEngine, amqp)
 }
