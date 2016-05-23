@@ -15,6 +15,9 @@ import pl.project13.scala.rainbow._
 import scala.concurrent.duration._
 
 /**
+  * Echo service replies with received correlation id. Testing client (scenario testingEchoServiceScenario) is checking
+  * if received reply does contain username, which was send in request to echo server.
+  *
   * Note: example lacks of handling bad things (for example try to use session(key).asOption[Type] instead
   * of session(key).as[Type], or not checking, what is in reply to property)
   */
@@ -25,8 +28,8 @@ class RpcSimulation extends Simulation {
   val counter = new AtomicLong(0)
   val feeder = Iterator.continually(Map(USERNAME_KEY -> ("rpcClient-" + counter.getAndIncrement().toString)))
 
-  val rpcClientsCount = 2
-  val rpcCallsPerUser = 100
+  val rpcClientsCount = 10
+  val rpcCallsPerUser = 10
   val echoCount = rpcClientsCount * rpcCallsPerUser
 
   private val echoExchange: AmqpExchange = exchange("gatlingTestEchoServiceExchange", "fanout", durable = true, autoDelete = false)
@@ -42,7 +45,7 @@ class RpcSimulation extends Simulation {
     .bind(echoExchange, echoQueue) // for test echo service
     .declare(requestersQueue) // for requesters (reply to queue)
 
-  val echoScenario = scenario(s"AMQP Echo for $echoCount messages")
+  val echoScenarioMockServicePart = scenario(s"mock echo server - reply to $echoCount messages")
     .repeat(echoCount) {
       exec {
         amqp("ConsumeSingleMsgForEchoing").consumeSingle(echoQueue.name, saveResultToSession = true)
@@ -74,13 +77,20 @@ class RpcSimulation extends Simulation {
       }
     }.pause(1500 millisecond)
 
-  val testingEchoServiceScenario = scenario(s"Testing Echo service with $rpcCallsPerUser messages")
+  val testingEchoServiceScenario = scenario(s"Echo service test with $rpcCallsPerUser calls")
     .feed(feeder)
     .repeat(rpcCallsPerUser, "counterEchoTest") {
+      // send request (rpcCall) to echo service
       exec(amqp("echo number ${counterEchoTest} request publish")
-        .rpcCall(echoExchange.name, Left("Test message, echo number ${counterEchoTest}. My name is ${" + USERNAME_KEY + "}"), Some(requestersQueue.name)))
+        .publishRpcCall(
+          echoExchange.name,
+          body = Left("Test message, echo number ${counterEchoTest}. My name is ${" + USERNAME_KEY + "}"),
+          replyToProperty = Some(requestersQueue.name)
+        )
+      )
         .exec(amqp("echo number ${counterEchoTest} consume single reply")
-          .consumeSingle(requestersQueue.name, saveResultToSession = true))
+          .consumeRpcResponse(requestersQueue.name)
+        )
         .exec(session => {
           val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg]
           val msgBody = new String(msg.body)
@@ -94,10 +104,15 @@ class RpcSimulation extends Simulation {
             session
           }
         }).exitHereIfFailed
+        .doIfEqualsOrElse("${" + USERNAME_KEY + "}", "rpcClient-4") {
+          pause(0 seconds)
+        } {
+          pause(0 seconds, 350 milliseconds)
+        }
     }
 
   setUp(
-    echoScenario.inject(atOnceUsers(1))
+    echoScenarioMockServicePart.inject(atOnceUsers(1))
     , testingEchoServiceScenario.inject(nothingFor(200 milliseconds), atOnceUsers(rpcClientsCount))
   ).protocols(amqpProtocol)
 }

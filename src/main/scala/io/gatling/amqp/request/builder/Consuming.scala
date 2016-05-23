@@ -1,6 +1,9 @@
 package io.gatling.amqp.request.builder
 
 import io.gatling.amqp.data._
+import io.gatling.amqp.infra.AmqpPublisher
+import io.gatling.core.Predef._
+import io.gatling.core.session.Expression
 
 trait Consuming { this: AmqpRequestBuilder =>
   /**
@@ -14,7 +17,8 @@ trait Consuming { this: AmqpRequestBuilder =>
 
   /**
     * Request to consume single message from queue and optionally save it in session. This should be used if you want
-    * to make rpc call. This part is for receiving response after publish to make request was send.
+    * to make rpc call (you need to set correlationId, or you will get possible responses which does not belong to your
+    * requests). This part is for receiving response after publish to make request was send.
     *
     * This call is blocking and waits for next message to be consumed.
     *
@@ -24,8 +28,28 @@ trait Consuming { this: AmqpRequestBuilder =>
     *                            under key { @link io.gatling.amqp.infra.AmqpConsumer#LAST_CONSUMED_MESSAGE_KEY}
     * @return
     */
-  def consumeSingle(queueName: String, autoAck: Boolean = true, saveResultToSession: Boolean = false): AmqpRequestBuilder =
-    consume(ConsumeSingleMessageRequest(queueName, autoAck = autoAck, saveResultToSession = saveResultToSession))
+  def consumeSingle(queueName: String, autoAck: Boolean = true, saveResultToSession: Boolean = false, correlationId: Expression[String] = null): AmqpRequestBuilder =
+    consume(ConsumeSingleMessageRequest(queueName, autoAck = autoAck, saveResultToSession = saveResultToSession, correlationId = Option(correlationId)))
+
+  /**
+    * Counterpart for [[Publishing.publishRpcCall()]]. This request will automatically use correlation id defined in session under
+    * [AmqpPublisher.LAST_PUBLISHED_MESSAGE_CORRELATIONID_KEY].
+    *
+    * Note: If you want to use custom correlation id key, you can use [[consumeSingle()]] method with last parameter filled in.
+    *
+    * @param queueName
+    * @param autoAck
+    * @param saveResultToSession
+    * @return
+    */
+  def consumeRpcResponse(queueName: String, autoAck: Boolean = true, saveResultToSession: Boolean = true): AmqpRequestBuilder =
+    consume(ConsumeSingleMessageRequest(
+      queueName,
+      autoAck,
+      saveResultToSession,
+      //correlationId = Some(s => "${" + AmqpPublisher.LAST_PUBLISHED_MESSAGE_CORRELATIONID_KEY + "}")
+      correlationId = Some(s => s(AmqpPublisher.LAST_PUBLISHED_MESSAGE_CORRELATIONID_KEY).as[String])
+    ))
 
   def consume(req: ConsumeRequest): AmqpRequestBuilder = {
     _request.foreach(_ =>

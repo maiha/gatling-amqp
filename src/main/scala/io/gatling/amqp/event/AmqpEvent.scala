@@ -18,7 +18,8 @@ sealed trait AmqpEvent {
 abstract class AmqpPublishEvent extends AmqpEvent {
   def action: AmqpAction = AmqpPublishAction
 }
-case class AmqpPublishRequest(req: PublishRequest, session: Session) extends AmqpPublishEvent
+
+case class AmqpPublishRequest(req: PublishRequest, session: Session, next: Option[ActorRef] = None) extends AmqpPublishEvent
 
 case class AmqpPublishing(publisherName: String, no: Int, startedAt: Long, req: PublishRequest, session: Session) extends AmqpPublishEvent {
   def eventId: String = s"$publisherName-$no"

@@ -1,5 +1,7 @@
 package io.gatling.amqp.data
 
+import io.gatling.core.session._
+
 // data for basicConsume(java.lang.String queue, boolean autoAck, java.lang.String consumerTag, boolean noLocal, boolean exclusive, java.util.Map<java.lang.String,java.lang.Object> arguments, Consumer callback) 
 sealed trait ConsumeRequest extends AmqpRequest
 
@@ -9,7 +11,7 @@ case class AsyncConsumerRequest(
                                ) extends ConsumeRequest
 
 case class ConsumeSingleMessageRequest(
-                                        queue: String,
+                                        queueName: String,
                                         autoAck: Boolean = true,
 
                                         /**
@@ -24,5 +26,5 @@ case class ConsumeSingleMessageRequest(
                                           *
                                           * NOTE: If you use this parameter on single step, you should not use general {@link AsyncConsumerRequest}, because you will probably miss some message and this request will stuck forever.
                                           */
-                                        correlationId: Option[String] = None
+                                        correlationId: Option[Expression[String]] = None
                                       ) extends ConsumeRequest

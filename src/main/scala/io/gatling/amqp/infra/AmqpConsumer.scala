@@ -77,9 +77,10 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
   }
 
   /**
-    * Method will try to use basicConsume, which is nonblocking "get if any" style method. It returns null value, if there
-    * is no message in queue. If basicConsume does not return message, method will register asynchronous consumer which
-    * will consume one message and than stops itself. This occasionally leads to problem.
+    * Method will try to use basicGet, which is nonblocking "get if any" style method. It returns null value, if there
+    * is no message in queue. If basicGet does not return message, method will register/start
+    * (see [[justInitSyncConsumer()]], basicConsume) asynchronous consumer which will start consuming messages
+    * in background and try to receive one message from its queue with timeout.
     *
     * @param req
     * @param session
@@ -87,7 +88,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     */
   protected def consumeSingle(req: ConsumeSingleMessageRequest, session: Session, next: ActorRef): Unit = {
     val startAt = nowMillis
-    val getSingle: GetResponse = channel.basicGet(req.queue, req.autoAck)
+    val getSingle: GetResponse = channel.basicGet(req.queueName, req.autoAck)
 
     def processResponse(consumedBy: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]) = {
       val endAt = nowMillis
@@ -106,36 +107,58 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
         case ex: Throwable =>
           log.warn("Error while ack/cancel msg/consumer. Going to continue with next step.", ex)
       } finally {
-        //executing next action have to be AFTER canceling consumer, because it is possible (and likely) that await termination will be faster end stops chanel before
         next ! newSession
       }
     }
 
     if (getSingle == null) {
+      if (req.autoAck == true) {
+        if (_consumerTag == None) {
+          log.info("Going to start consumer, because basicGet did not returned any data.")
+          justInitSyncConsumer(req.queueName)
+        }
+      } else {
+        ???
+      }
       // TODO introduce req.delivery timeout
       tryNextDelivery(deliveryTimeout) match {
         case Success(delivered: Delivered) =>
           processResponse("Consumer", delivered.delivery.envelope, delivered.delivery.properties, delivered.delivery.body)
+
         case Failure(ex) =>
-          val endAt = nowMillis
-          ex match {
-            case DeliveryTimeouted(msec) =>
-              statsNg(session, startAt, endAt, "consumeSingle", None, s"DeliveryTimeouted($msec)")
-              deliveryTimeouted(msec)
-            case error =>
-              statsNg(session, startAt, endAt, "consumeSingle", None, s"error=${error.getMessage}")
-              deliveryFailed(error)
+          try {
+            val endAt = nowMillis
+            ex match {
+              case DeliveryTimeouted(msec) =>
+                statsNg(session, startAt, endAt, "consumeSingle", None, s"DeliveryTimeouted($msec)")
+                deliveryTimeouted(msec)
+              case error =>
+                statsNg(session, startAt, endAt, "consumeSingle", None, s"error=${error.getMessage}")
+                deliveryFailed(error)
+            }
+          } finally {
+            next ! session.markAsFailed
           }
       }
     } else {
+      // else for getSingle == null
       processResponse("BasicConsume", getSingle.getEnvelope, getSingle.getProps, getSingle.getBody)
     }
   }
 
-  protected def consumeSync(queueName: String, session: Session): Unit = {
+  /**
+    * Initialize basic consume with auto acknowledgement of received messages (thus sync in method name).
+    *
+    * @param queueName
+    */
+  protected def justInitSyncConsumer(queueName: String) = {
     val tag = channel.basicConsume(queueName, true, consumer)
     _consumerTag = Some(tag)
     log.debug(s"Start basicConsume($queueName) [tag:$tag]".yellow)
+  }
+
+  protected def consumeSync(queueName: String, session: Session): Unit = {
+    justInitSyncConsumer(queueName)
     self ! BlockingReadOne(session)
   }
 

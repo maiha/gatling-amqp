@@ -10,8 +10,14 @@ import io.gatling.core.session.Session
 
 class AmqpPublishAction(req: PublishRequest, val next: ActorRef)(implicit amqp: AmqpProtocol) extends Chainable with Logging {
   override def execute(session: Session): Unit = {
-    amqp.router ! AmqpPublishRequest(req, session)
-    next ! session
+    req match {
+      case req: PublishRequestAsync =>
+        amqp.router ! AmqpPublishRequest(req, session)
+        next ! session
+
+      case req: RpcCallRequest =>
+        amqp.router ! AmqpPublishRequest(req, session, Some(next))
+    }
   }
 }
 

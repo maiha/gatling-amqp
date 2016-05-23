@@ -25,6 +25,7 @@ class AmqpConsumeCorrelatedAction(req: ConsumeRequest, val next: ActorRef)(impli
       case ConsumeSingleMessageRequest(_, _, _, Some(_)) =>
         consumerActorForCorrelationId ! AmqpSingleConsumerPerStepRequest(req, session, next)
       case _ =>
+        // TODO check request type in instantiation time, not in runtime
         // router will create single actor for this scenario step, for each user/session
         log.warn("There is something wrong. In single step of scenario there seems to be two different consume call types " +
           "(correlation one and one without). Weird. Check code. this should not happen. Going to continue correctly.")
@@ -34,5 +35,5 @@ class AmqpConsumeCorrelatedAction(req: ConsumeRequest, val next: ActorRef)(impli
 }
 
 object AmqpConsumeCorrelatedAction {
-  def props(req: ConsumeRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpConsumeAction], req, next, amqp)
+  def props(req: ConsumeRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpConsumeCorrelatedAction], req, next, amqp)
 }
