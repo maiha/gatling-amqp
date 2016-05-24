@@ -31,7 +31,8 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
   }
 
   private case class ConsumeRequested()
-  private case class BlockingReadOne(session: Session)
+
+  private case class BlockingReadOne(session: Session, requestName: String)
 
   override def isFinished: Boolean = deliveredCount match {
     case 0 => (lastRequestedAt + initialTimeout < nowMillis)  // wait initial timeout for first publishing
@@ -39,20 +40,20 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
   }
 
   override def receive = super.receive.orElse {
-    case BlockingReadOne(session) =>
+    case BlockingReadOne(session, requestName) =>
       tryNextDelivery(deliveryTimeout) match {
-        case Success(delivered: Delivered) => deliveryFound(delivered, session, "consume")
+        case Success(delivered: Delivered) => deliveryFound(delivered, session, "consume" + "-" + requestName)
         case Failure(DeliveryTimeouted(msec)) => deliveryTimeouted(msec)
         case Failure(error)                   => deliveryFailed(error)
       }
-      self ! BlockingReadOne(session)
+      self ! BlockingReadOne(session, requestName)
 
     case AmqpConsumeRequest(req, session, next) =>
       req match {
         case req: AsyncConsumerRequest if req.autoAck == true => {
           //exec next action and asynchronously (from gatling scenario point of view) start consuming everything in queue
           next ! session
-          consumeSync(req.queue, session)
+          consumeSync(req.queue, session, req.requestName.apply(session).get)
         }
         case req: AsyncConsumerRequest if req.autoAck == false => {
           //exec next action and asynchronously (from gatling scenario point of view) start consuming everything in queue
@@ -98,7 +99,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
       } else {
         session
       }
-      statsOk(newSession, startAt, endAt, "consumeSingleBy" + consumedBy)
+      statsOk(newSession, startAt, endAt, "consumeSingleBy" + consumedBy + "-" + req.requestName)
       try {
         if (req.autoAck == false) {
           channel.basicAck(envelope.getDeliveryTag, false)
@@ -130,10 +131,10 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
             val endAt = nowMillis
             ex match {
               case DeliveryTimeouted(msec) =>
-                statsNg(session, startAt, endAt, "consumeSingle", None, s"DeliveryTimeouted($msec)")
+                statsNg(session, startAt, endAt, "consumeSingle" + "-" + req.requestName, None, s"DeliveryTimeouted($msec)")
                 deliveryTimeouted(msec)
               case error =>
-                statsNg(session, startAt, endAt, "consumeSingle", None, s"error=${error.getMessage}")
+                statsNg(session, startAt, endAt, "consumeSingle" + "-" + req.requestName, None, s"error=${error.getMessage}")
                 deliveryFailed(error)
             }
           } finally {
@@ -157,9 +158,9 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     log.debug(s"Start basicConsume($queueName) [tag:$tag]".yellow)
   }
 
-  protected def consumeSync(queueName: String, session: Session): Unit = {
+  protected def consumeSync(queueName: String, session: Session, requestName: String): Unit = {
     justInitSyncConsumer(queueName)
-    self ! BlockingReadOne(session)
+    self ! BlockingReadOne(session, requestName)
   }
 
   protected def tryNextDelivery(timeoutMsec: Long): Try[Delivered] = Try {
@@ -185,12 +186,12 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     log.warn(s"$actorName delivery failed: $err".yellow)
   }
 
-  protected def deliveryFound(delivered: Delivered, session: Session, description: String): Unit = {
+  protected def deliveryFound(delivered: Delivered, session: Session, descriptionWithRequestNameAlso: String): Unit = {
     deliveredCount += 1
 //    val message = new String(delivery.getBody())
     import delivered._
     //    val tag = delivery.getEnvelope.getDeliveryTag
-    statsOk(session, startedAt, stoppedAt, description)
+    statsOk(session, startedAt, stoppedAt, descriptionWithRequestNameAlso)
 //    log.debug(s"$actorName.consumeSync: got $tag".red)
   }
 }

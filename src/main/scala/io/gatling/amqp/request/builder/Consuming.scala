@@ -13,7 +13,7 @@ trait Consuming { this: AmqpRequestBuilder =>
     * @return
     */
   def consume(queueName: String, autoAck: Boolean = true): AmqpRequestBuilder =
-    consume(AsyncConsumerRequest(queueName, autoAck = autoAck))
+    consume(AsyncConsumerRequest(this.requestName, queueName, autoAck = autoAck))
 
   /**
     * Request to consume single message from queue and optionally save it in session. This should be used if you want
@@ -29,7 +29,7 @@ trait Consuming { this: AmqpRequestBuilder =>
     * @return
     */
   def consumeSingle(queueName: String, autoAck: Boolean = true, saveResultToSession: Boolean = false, correlationId: Expression[String] = null): AmqpRequestBuilder =
-    consume(ConsumeSingleMessageRequest(queueName, autoAck = autoAck, saveResultToSession = saveResultToSession, correlationId = Option(correlationId)))
+    consume(ConsumeSingleMessageRequest(this.requestName, queueName, autoAck = autoAck, saveResultToSession = saveResultToSession, correlationId = Option(correlationId)))
 
   /**
     * Counterpart for [[Publishing.publishRpcCall()]]. This request will automatically use correlation id defined in session under
@@ -44,6 +44,7 @@ trait Consuming { this: AmqpRequestBuilder =>
     */
   def consumeRpcResponse(queueName: String, autoAck: Boolean = true, saveResultToSession: Boolean = true): AmqpRequestBuilder =
     consume(ConsumeSingleMessageRequest(
+      this.requestName,
       queueName,
       autoAck,
       saveResultToSession,

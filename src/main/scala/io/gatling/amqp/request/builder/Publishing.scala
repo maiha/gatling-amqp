@@ -10,10 +10,12 @@ import scala.collection.JavaConversions._
 
 trait Publishing {
   this: AmqpRequestBuilder =>
-  def publish(exchangeName: Expression[String], body: Either[Expression[String], String], replyToProperty: Option[String] = None): AmqpRequestBuilder = {
-    val bb = new BasicProperties.Builder() //.headers(Map(keyValue)) // keyValue: (String, String), // import scala.collection.JavaConversions._
+
+  def publish(exchangeName: Expression[String], body: Either[Expression[String], String], replyToProperty: Option[String] = None, headers: Map[String, AnyRef] = Map.empty): AmqpRequestBuilder = {
+    val bb = new BasicProperties.Builder()
     replyToProperty.map(bb.replyTo(_))
-    publish(PublishRequestAsync(exchangeName, body, bb.build()))
+    bb.headers(headers)
+    publish(PublishRequestAsync(this.requestName, exchangeName, body, bb.build()))
   }
 
   val generator: UUIDGenerator = new UUIDGenerator()
@@ -47,11 +49,11 @@ trait Publishing {
       bb.correlationId(corrId.apply(session).get)
       bb.build()
     }
-    publish(RpcCallRequest(exchangeName, propExpression, body))
+    publish(RpcCallRequest(this.requestName, exchangeName, propExpression, body))
   }
 
   def publishToQueue(queueName: Expression[String], msgBody: Either[Expression[Array[Byte]], Array[Byte]], properties: Expression[BasicProperties]): AmqpRequestBuilder = {
-    publish(PublishRequestAsync("", queueName, properties, msgBody))
+    publish(PublishRequestAsync(this.requestName, "", queueName, properties, msgBody))
   }
 
   def publish(req: PublishRequest): AmqpRequestBuilder = {

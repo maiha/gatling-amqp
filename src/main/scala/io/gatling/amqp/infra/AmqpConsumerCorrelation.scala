@@ -13,6 +13,7 @@ import pl.project13.scala.rainbow.Rainbow._
 
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.util.Try
 
 /**
   * TODO once per some time, check pending requests if some timeouted, just resume next with session marked as failed.
@@ -31,7 +32,7 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
 
   case class ReceivedDataRepeatedDelivery(receivedData: ReceivedData)
 
-  case class RequestWithCorrelation(session: Session, nextAction: ActorRef, saveResultToSession: Boolean, requestTimestamp: Long)
+  case class RequestWithCorrelation(session: Session, nextAction: ActorRef, saveResultToSession: Boolean, requestTimestamp: Long, requestName: String)
 
   val routingMap = mutable.HashMap[String, RequestWithCorrelation]()
   //correlationId -> (session, next)
@@ -64,7 +65,7 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
     * @return returns true, if message was delivered to right action. False is returned, if no such request exist in [[routingMap]], which have same correlation id a received data
     */
   private def handleReceivedData(receivedData: ReceivedData): Boolean = {
-    val value = routingMap.remove(receivedData.correlationId)
+    val value: Option[RequestWithCorrelation] = routingMap.remove(receivedData.correlationId)
     value match {
       case Some(req) => {
         deliveredCount += 1
@@ -76,8 +77,14 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
             req.session.set(AmqpPublisher.LAST_PUBLISHED_MESSAGE_CORRELATIONID_KEY, null)
         }
         val nextActor = req.nextAction
+        // TODO temporary solution for makeinf statuscode=200 only OK consumed messages
+        val statusCode = Try(receivedData.deliveredMsg.properties.getHeaders.get("statusCode").asInstanceOf[Int]).getOrElse(-1)
+        if (200 == statusCode) {
+          statsOk(newSession, req.requestTimestamp, receivedData.deliveredAt, getTitleForRequest(req.requestName))
+        } else {
+          statsNg(newSession, req.requestTimestamp, receivedData.deliveredAt, getTitleForRequest(req.requestName), Some(statusCode + ""), "Status code was " + statusCode)
+        }
         nextActor ! newSession
-        statsOk(newSession, req.requestTimestamp, receivedData.deliveredAt, "consumeSingleWithCorrelationId")
         true
       }
       case None =>
@@ -134,18 +141,25 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
             tag
           })
           val actualCorrelationId: String = req.correlationId.get(session).get
-          routingMap.put(actualCorrelationId, RequestWithCorrelation(session, next, req.saveResultToSession, requestTimestamp))
+          val reqNameEvaluated: String = req.requestName.apply(session).get
+          routingMap.put(actualCorrelationId, RequestWithCorrelation(session, next, req.saveResultToSession, requestTimestamp, reqNameEvaluated))
           log.trace("We have marked request for rpc response with correlationId={};next={}.",
             actualCorrelationId.red.asInstanceOf[AnyRef],
             next.asInstanceOf[AnyRef])
       }
   }
 
+
   override protected def isFinished: Boolean = {
     routingMap.isEmpty && (deliveredCount match {
       case 0 => (lastRequestedAt + initialTimeout < nowMillis) // wait initial timeout for first publishing
       case n => (lastDeliveredAt + runningTimeout < nowMillis) // wait running timeout for last publishing
     })
+  }
+
+  private def getTitleForRequest(requestName: String) = {
+    //"ConsumeCorrelated" + "-" + requestName
+    "Consume" + "-" + requestName
   }
 
   override protected def shutdown(): Unit = {
@@ -156,9 +170,24 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
         log.debug(s"Cancel consumer($tag)".yellow)
     }
 
-    // TODO clean up routingMap and log statsNg for all waiting requests
-
     context.become({ case _ => }, discardOld = true)
+
+    // clean up routingMap and log statsNg for all waiting requests
+    val shutdownTime = nowMillis
+    routingMap.foldLeft(Unit)((_, unservedRequest) => {
+      val correlationId = unservedRequest._1
+      val request: RequestWithCorrelation = unservedRequest._2
+      statsNg(request.session,
+        request.requestTimestamp,
+        shutdownTime,
+        getTitleForRequest(request.requestName),
+        Some("Shutting down remaining un-served requests."),
+        "Request to consume message with correlationId=\"" + correlationId + "\" remained un-served till shutdown. Going to fail it and remove."
+      )
+      routingMap.remove(correlationId)
+      Unit
+    })
+
     context.stop(self) // ignore all rest messages
   }
 }

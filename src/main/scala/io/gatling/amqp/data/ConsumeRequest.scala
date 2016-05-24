@@ -6,11 +6,13 @@ import io.gatling.core.session._
 sealed trait ConsumeRequest extends AmqpRequest
 
 case class AsyncConsumerRequest(
+                                 requestName: Expression[String],
                                  queue: String,
                                  autoAck: Boolean
                                ) extends ConsumeRequest
 
 case class ConsumeSingleMessageRequest(
+                                        requestName: Expression[String],
                                         queueName: String,
                                         autoAck: Boolean = true,
 
