@@ -18,17 +18,17 @@ class AmqpTracer(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   def receive = {
     case WriteStat(session, startedAt, stoppedAt, title, status, code, mes) =>
       val timings = ResponseTimings(startedAt, stoppedAt, stoppedAt, stoppedAt)
-      statsEngine.logResponse(session, title, timings, OK, code, mes)
+      statsEngine.logResponse(session, title, timings, status, code, mes)
 
     case MessageOk(event, stoppedAt, title) =>
       import event._
       val timings = ResponseTimings(startedAt, stoppedAt, stoppedAt, stoppedAt)
-      statsEngine.logResponse(session, title, timings, OK, None, None)
+      statsEngine.logResponse(session, title + "-" + event.req.requestName(session).get, timings, OK, None, None)
 
     case MessageNg(event, stoppedAt, title, message) =>
       import event._
       val timings = ResponseTimings(startedAt, stoppedAt, stoppedAt, stoppedAt)
-      statsEngine.logResponse(session, title, timings, KO, None, message)
+      statsEngine.logResponse(session, title + "-" + event.req.requestName(session).get, timings, KO, None, message)
   }
 }
 
