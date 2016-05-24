@@ -14,7 +14,7 @@ class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: A
         system.actorOf(AmqpPublishAction.props(req, next, amqp), actorName("AmqpPublishAction"))
       case req: ConsumeRequest =>
         req match {
-          case ConsumeSingleMessageRequest(_, _, _, Some(_)) =>
+          case ConsumeSingleMessageRequest(_, _, _, _, Some(_)) =>
             system.actorOf(AmqpConsumeCorrelatedAction.props(req, next, amqp), actorName("AmqpConsumeCorrelatedAction"))
           case _ =>
             // router will create single actor for this scenario step, for each user/session

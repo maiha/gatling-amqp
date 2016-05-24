@@ -22,7 +22,7 @@ class AmqpConsumeCorrelatedAction(req: ConsumeRequest, val next: ActorRef)(impli
     // router creates actors (AmqpConsumer) per session. For consuming message by correlation id, we need just one actor
     // per scenario step, thus just one AmqpConsumerCorrelation
     req match {
-      case ConsumeSingleMessageRequest(_, _, _, Some(_)) =>
+      case ConsumeSingleMessageRequest(_, _, _, _, Some(_)) =>
         consumerActorForCorrelationId ! AmqpSingleConsumerPerStepRequest(req, session, next)
       case _ =>
         // TODO check request type in instantiation time, not in runtime
