@@ -49,7 +49,10 @@ class RpcSimulation extends Simulation {
     .repeat(echoCount) {
       exec {
         amqp("ConsumeSingleMsgForEchoing").consumeSingle(echoQueue.name, saveResultToSession = true)
-      }.exec {
+      }
+        // simulate server side processing time (if you pass ~5 seconds, consume on client side should timeout)
+        .pause(0 seconds, 1 seconds)
+        .exec {
         //consume all messages which have left in queue
         amqp("PublishEchoedMsg")
           .publishToQueue(
@@ -67,6 +70,8 @@ class RpcSimulation extends Simulation {
               val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg]
               val correlationId = msg.properties.getCorrelationId
               val prop = new BasicProperties.Builder
+              import scala.collection.JavaConversions._
+              prop.headers(Map("statusCode" -> 200.asInstanceOf[AnyRef]))
               if (correlationId != null && correlationId.nonEmpty) {
                 log.info("Going to set correlation id to response. correlationId={}.", correlationId.yellow.asInstanceOf[Any])
                 prop.correlationId(correlationId)
@@ -91,6 +96,7 @@ class RpcSimulation extends Simulation {
         .exec(amqp("echo number ${counterEchoTest} consume single reply")
           .consumeRpcResponse(requestersQueue.name)
         )
+        .exitHereIfFailed
         .exec(session => {
           val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).as[DeliveredMsg]
           val msgBody = new String(msg.body)

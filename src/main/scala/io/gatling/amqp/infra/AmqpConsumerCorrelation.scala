@@ -1,5 +1,7 @@
 package io.gatling.amqp.infra
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{ActorRef, Props}
 import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client.{Consumer, Envelope, ShutdownSignalException}
@@ -8,6 +10,7 @@ import io.gatling.amqp.data.{AsyncConsumerRequest, ConsumeSingleMessageRequest}
 import io.gatling.amqp.event.{AmqpConsumeRequest, AmqpSingleConsumerPerStepRequest}
 import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.Predef._
+import io.gatling.core.util.TimeHelper
 import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow.Rainbow._
 
@@ -16,8 +19,6 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
-  * TODO once per some time, check pending requests if some timeouted, just resume next with session marked as failed.
-  *
   * Created by Ľubomír Varga on 20.5.2016.
   */
 class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) extends AmqpConsumerBase(actorName) {
@@ -28,14 +29,11 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
     */
   val retryDelay: FiniteDuration = 500 milliseconds
 
-  case class ReceivedData(deliveredAt: Long, correlationId: String, deliveredMsg: DeliveredMsg)
+  /**
+    * correlationId -> RequestWithCorrelation(session, next, ...)
+    */
+  val routingMap = mutable.HashMap[String, AmqpConsumerCorrelation.RequestWithCorrelation]()
 
-  case class ReceivedDataRepeatedDelivery(receivedData: ReceivedData)
-
-  case class RequestWithCorrelation(session: Session, nextAction: ActorRef, saveResultToSession: Boolean, requestTimestamp: Long, requestName: String)
-
-  val routingMap = mutable.HashMap[String, RequestWithCorrelation]()
-  //correlationId -> (session, next)
   val tagMap = mutable.HashMap[String, String]() //queue name -> consumer tag
 
   // TODO use autoAck...
@@ -50,7 +48,7 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
       val deliveredAt = nowMillis
       val correlationId: String = properties.getCorrelationId
       val deliveredMsg: DeliveredMsg = DeliveredMsg(envelope, properties, body)
-      self ! ReceivedData(deliveredAt, correlationId, deliveredMsg)
+      self ! AmqpConsumerCorrelation.ReceivedData(deliveredAt, correlationId, deliveredMsg)
     }
 
     override def handleShutdownSignal(consumerTag: String, sig: ShutdownSignalException): Unit = {}
@@ -64,8 +62,8 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
     * @param receivedData
     * @return returns true, if message was delivered to right action. False is returned, if no such request exist in [[routingMap]], which have same correlation id a received data
     */
-  private def handleReceivedData(receivedData: ReceivedData): Boolean = {
-    val value: Option[RequestWithCorrelation] = routingMap.remove(receivedData.correlationId)
+  private def handleReceivedData(receivedData: AmqpConsumerCorrelation.ReceivedData): Boolean = {
+    val value: Option[AmqpConsumerCorrelation.RequestWithCorrelation] = routingMap.remove(receivedData.correlationId)
     value match {
       case Some(req) => {
         deliveredCount += 1
@@ -92,13 +90,31 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
     }
   }
 
+  log.info("Going to schedule TimeoutCheck to be executed each second.")
+  val scheduleForTimeouts = context.system.scheduler.schedule(AmqpConsumerCorrelation.TIMEOUT_TRESHOLD, 1 seconds, self, AmqpConsumerCorrelation.TimeoutCheck)
+
   override def receive = super.receive.orElse {
-    case rd: ReceivedData =>
-      if (false == handleReceivedData(rd)) {
-        scheduler.scheduleOnce(retryDelay, self, ReceivedDataRepeatedDelivery(rd))
+    case AmqpConsumerCorrelation.TimeoutCheck =>
+      val now = TimeHelper.nowMillis
+      routingMap.foreach {
+        case (corrId, req) => {
+          val diff = FiniteDuration.apply(now - req.requestTimestamp, TimeUnit.MILLISECONDS)
+          if(diff.gteq(AmqpConsumerCorrelation.TIMEOUT_TRESHOLD)) {
+            log.warn("Timeout for corrId={}, has happened. diff={}.", corrId, diff)
+            routingMap.remove(corrId)
+            val newSession = req.session.markAsFailed
+            statsNg(newSession, req.requestTimestamp, now, getTitleForRequest(req.requestName), Some("ConsumeReqTimeout"), "Consume request timeouted")
+            req.nextAction ! newSession
+          }
+        }
       }
 
-    case ReceivedDataRepeatedDelivery(rd) =>
+    case rd: AmqpConsumerCorrelation.ReceivedData =>
+      if (false == handleReceivedData(rd)) {
+        scheduler.scheduleOnce(retryDelay, self, AmqpConsumerCorrelation.ReceivedDataRepeatedDelivery(rd))
+      }
+
+    case AmqpConsumerCorrelation.ReceivedDataRepeatedDelivery(rd) =>
       if (true == handleReceivedData(rd)) {
         log.info("Message delivered in repeated delivery. Response was received before actually awaited by scenario. Times for this response will be possibly wrong.")
       } else {
@@ -142,7 +158,7 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
           })
           val actualCorrelationId: String = req.correlationId.get(session).get
           val reqNameEvaluated: String = req.requestName.apply(session).get
-          routingMap.put(actualCorrelationId, RequestWithCorrelation(session, next, req.saveResultToSession, requestTimestamp, reqNameEvaluated))
+          routingMap.put(actualCorrelationId, AmqpConsumerCorrelation.RequestWithCorrelation(session, next, req.saveResultToSession, requestTimestamp, reqNameEvaluated))
           log.trace("We have marked request for rpc response with correlationId={};next={}.",
             actualCorrelationId.red.asInstanceOf[AnyRef],
             next.asInstanceOf[AnyRef])
@@ -163,6 +179,8 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
   }
 
   override protected def shutdown(): Unit = {
+    scheduleForTimeouts.cancel()
+
     tagMap.foreach {
       x =>
         val tag = x._2
@@ -176,7 +194,7 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
     val shutdownTime = nowMillis
     routingMap.foldLeft(Unit)((_, unservedRequest) => {
       val correlationId = unservedRequest._1
-      val request: RequestWithCorrelation = unservedRequest._2
+      val request: AmqpConsumerCorrelation.RequestWithCorrelation = unservedRequest._2
       statsNg(request.session,
         request.requestTimestamp,
         shutdownTime,
@@ -194,4 +212,17 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
 
 object AmqpConsumerCorrelation {
   def props(name: String, amqp: AmqpProtocol) = Props(classOf[AmqpConsumerCorrelation], name, amqp)
+
+  case class ReceivedData(deliveredAt: Long, correlationId: String, deliveredMsg: DeliveredMsg)
+
+  case class ReceivedDataRepeatedDelivery(receivedData: ReceivedData)
+
+  case class RequestWithCorrelation(session: Session, nextAction: ActorRef, saveResultToSession: Boolean, requestTimestamp: Long, requestName: String)
+
+  /**
+    * Command which is used to check timeouts of pending consume requests.
+    */
+  case object TimeoutCheck
+
+  val TIMEOUT_TRESHOLD: FiniteDuration = 5 seconds
 }
