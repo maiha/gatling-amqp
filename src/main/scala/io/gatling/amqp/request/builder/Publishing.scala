@@ -1,10 +1,10 @@
 package io.gatling.amqp.request.builder
 
-import com.fasterxml.jackson.annotation.ObjectIdGenerators.UUIDGenerator
 import com.rabbitmq.client.AMQP.BasicProperties
 import io.gatling.amqp.data._
 import io.gatling.core.Predef._
 import io.gatling.core.session.Expression
+import io.gatling.core.util.TimeHelper
 
 import scala.collection.JavaConversions._
 
@@ -17,8 +17,6 @@ trait Publishing {
     bb.headers(headers)
     publish(PublishRequestAsync(this.requestName, exchangeName, body, bb.build()))
   }
-
-  val generator: UUIDGenerator = new UUIDGenerator()
 
   /**
     * Similar to [[Publishing.publish()]] call, but will include also correlation id according session (session.userId) and time.
@@ -38,9 +36,7 @@ trait Publishing {
                       replyToProperty: Option[String] = None,
                       customHeaders: Map[String, AnyRef] = Map.empty,
                       corrId: Expression[String] = session => {
-                        //session.userId + "-" + TimeHelper.nowMillis
-                        // TODO use session user id and timestamp instead of UUID!
-                        generator.generateId().toString
+                        session.userId + "-" + TimeHelper.nowMillis
                }): AmqpRequestBuilder = {
     val propExpression: Expression[BasicProperties] = session => {
       val bb = new BasicProperties.Builder() //.headers(Map(keyValue)) // keyValue: (String, String), // import scala.collection.JavaConversions._
