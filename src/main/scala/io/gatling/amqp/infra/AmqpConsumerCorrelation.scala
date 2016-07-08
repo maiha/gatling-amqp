@@ -10,7 +10,6 @@ import io.gatling.amqp.data.{AsyncConsumerRequest, ConsumeSingleMessageRequest}
 import io.gatling.amqp.event.{AmqpConsumeRequest, AmqpSingleConsumerPerStepRequest}
 import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.Predef._
-import io.gatling.core.session
 import io.gatling.core.util.TimeHelper
 import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow.Rainbow._
@@ -258,5 +257,5 @@ object AmqpConsumerCorrelation {
     */
   case object TimeoutCheck
 
-  val TIMEOUT_TRESHOLD: FiniteDuration = 5 seconds
+  val TIMEOUT_TRESHOLD: FiniteDuration = 60 seconds
 }
