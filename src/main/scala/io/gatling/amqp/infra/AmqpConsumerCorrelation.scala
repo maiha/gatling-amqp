@@ -137,10 +137,6 @@ class AmqpConsumerCorrelation(actorName: String,
       if (true == handleReceivedData(rd)) {
         log.info("Message delivered in repeated delivery. Response was received before actually awaited by scenario. Times for this response will be possibly wrong.")
       } else {
-        if(new String(rd.deliveredMsg.body).contains("urn:be:bet:")) {
-          val h = rd.deliveredMsg.properties.getHeaders
-          println("unexpected:" + h.get("PayloadId"))
-        }
         if(unexpectedMsgLogged > 0) {
           val a = unexpectedMsgLogged match {
             case 1 =>
