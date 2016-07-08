@@ -1,7 +1,7 @@
 package io.gatling.amqp.request.builder
 
 import io.gatling.amqp.data._
-import io.gatling.amqp.infra.AmqpPublisher
+import io.gatling.amqp.infra.{AmqpConsumerCorrelation, AmqpPublisher}
 import io.gatling.core.Predef._
 import io.gatling.core.session.Expression
 
@@ -23,13 +23,27 @@ trait Consuming { this: AmqpRequestBuilder =>
     * This call is blocking and waits for next message to be consumed.
     *
     * @param queueName
-    * @param autoAck             NOT implemented yet to be false (async consume)
-    * @param saveResultToSession if true, consumed message will be saved in session attributes
-    *                            under key { @link io.gatling.amqp.infra.AmqpConsumer#LAST_CONSUMED_MESSAGE_KEY}
+    * @param autoAck                        NOT implemented yet to be false (async consume)
+    * @param saveResultToSession            if true, consumed message will be saved in session attributes
+    *                                       under key { @link io.gatling.amqp.infra.AmqpConsumer#LAST_CONSUMED_MESSAGE_KEY}
+    * @param customCorrelationIdTransformer transformer of received message to correlation id, which will be used instead
+    *                                       actual correlation id. By providing some value here, you can match received
+    *                                       message by anything needed (not only by correlation id)
     * @return
     */
-  def consumeSingle(queueName: String, autoAck: Boolean = true, saveResultToSession: Boolean = false, correlationId: Expression[String] = null): AmqpRequestBuilder =
-    consume(ConsumeSingleMessageRequest(this.requestName, queueName, autoAck = autoAck, saveResultToSession = saveResultToSession, correlationId = Option(correlationId)))
+  def consumeSingle(queueName: String,
+                    autoAck: Boolean = true,
+                    saveResultToSession: Boolean = false,
+                    correlationId: Expression[String] = null,
+                    customCorrelationIdTransformer: AmqpConsumerCorrelation.ReceivedData => String = null
+                   ): AmqpRequestBuilder =
+    consume(ConsumeSingleMessageRequest(this.requestName,
+      queueName,
+      autoAck = autoAck,
+      saveResultToSession = saveResultToSession,
+      correlationId = Option(correlationId),
+      customCorrelationIdTransformer = Option(customCorrelationIdTransformer)
+    ))
 
   /**
     * Counterpart for [[Publishing.publishRpcCall()]]. This request will automatically use correlation id defined in session under

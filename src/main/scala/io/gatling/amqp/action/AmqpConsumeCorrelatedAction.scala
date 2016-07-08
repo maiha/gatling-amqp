@@ -11,18 +11,21 @@ import io.gatling.core.session.Session
 /**
   * Created by Ľubomír Varga on 20.5.2016.
   */
-class AmqpConsumeCorrelatedAction(req: ConsumeRequest, val next: ActorRef)(implicit amqp: AmqpProtocol) extends Chainable with Logging {
+class AmqpConsumeCorrelatedAction(req: ConsumeRequest,
+                                  val next: ActorRef,
+                                  val conv: Option[AmqpConsumerCorrelation.ReceivedData => String]
+                                 )(implicit amqp: AmqpProtocol) extends Chainable with Logging {
   val consumerActorForCorrelationId: ActorRef = {
     // single actor for all users in this scenario step
     val name = "AmqpConsumerCorrelation"
-    context.actorOf(AmqpConsumerCorrelation.props(name, amqp), name)
+    context.actorOf(AmqpConsumerCorrelation.props(name, conv, amqp), name)
   }
 
   override def execute(session: Session): Unit = {
     // router creates actors (AmqpConsumer) per session. For consuming message by correlation id, we need just one actor
     // per scenario step, thus just one AmqpConsumerCorrelation
     req match {
-      case ConsumeSingleMessageRequest(_, _, _, _, Some(_)) =>
+      case ConsumeSingleMessageRequest(_, _, _, _, Some(_), _) =>
         consumerActorForCorrelationId ! AmqpSingleConsumerPerStepRequest(req, session, next)
       case _ =>
         // TODO check request type in instantiation time, not in runtime
@@ -35,5 +38,9 @@ class AmqpConsumeCorrelatedAction(req: ConsumeRequest, val next: ActorRef)(impli
 }
 
 object AmqpConsumeCorrelatedAction {
-  def props(req: ConsumeRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpConsumeCorrelatedAction], req, next, amqp)
+  def props(req: ConsumeRequest,
+            next: ActorRef,
+            conv: Option[AmqpConsumerCorrelation.ReceivedData => String],
+            amqp: AmqpProtocol
+           ) = Props(classOf[AmqpConsumeCorrelatedAction], req, next, conv, amqp)
 }

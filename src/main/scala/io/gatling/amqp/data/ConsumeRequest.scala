@@ -1,5 +1,6 @@
 package io.gatling.amqp.data
 
+import io.gatling.amqp.infra.AmqpConsumerCorrelation
 import io.gatling.core.session._
 
 // data for basicConsume(java.lang.String queue, boolean autoAck, java.lang.String consumerTag, boolean noLocal, boolean exclusive, java.util.Map<java.lang.String,java.lang.Object> arguments, Consumer callback) 
@@ -28,5 +29,16 @@ case class ConsumeSingleMessageRequest(
                                           *
                                           * NOTE: If you use this parameter on single step, you should not use general {@link AsyncConsumerRequest}, because you will probably miss some message and this request will stuck forever.
                                           */
-                                        correlationId: Option[Expression[String]] = None
+                                        correlationId: Option[Expression[String]] = None,
+
+                                        /**
+                                          * Advanced version of receiving single message. By providing this lambda, you are able to provide/override
+                                          * correlation id of all messages to any custom values. You can for example pass here function, which will
+                                          * return "PayloadId" from header. Than all received messages will be taken as theirs correlation id was
+                                          * actually value contained in PayloadId in header. No mather if received messages contained correlation
+                                          * id or not.
+                                          *
+                                          * Note, conversion function is just single one for all users in given step, thus it is not Expression.
+                                          */
+                                        customCorrelationIdTransformer: Option[AmqpConsumerCorrelation.ReceivedData => String] = None
                                       ) extends ConsumeRequest

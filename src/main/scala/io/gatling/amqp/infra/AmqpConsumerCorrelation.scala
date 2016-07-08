@@ -10,6 +10,7 @@ import io.gatling.amqp.data.{AsyncConsumerRequest, ConsumeSingleMessageRequest}
 import io.gatling.amqp.event.{AmqpConsumeRequest, AmqpSingleConsumerPerStepRequest}
 import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.Predef._
+import io.gatling.core.session
 import io.gatling.core.util.TimeHelper
 import io.gatling.core.util.TimeHelper.nowMillis
 import pl.project13.scala.rainbow.Rainbow._
@@ -21,13 +22,20 @@ import scala.util.Try
 /**
   * Created by Ľubomír Varga on 20.5.2016.
   */
-class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) extends AmqpConsumerBase(actorName) {
+class AmqpConsumerCorrelation(actorName: String,
+                              val conv: Option[AmqpConsumerCorrelation.ReceivedData => String]
+                             )(implicit _amqp: AmqpProtocol) extends AmqpConsumerBase(actorName) {
+  if(conv.isDefined) {
+    log.trace("This AmqpConsumerCorrelation instance will apply customCorrelationIdTransformer function to received data and " +
+      "use result as correlation id of received message instead of its actual correlation id property this={}.", this)
+  }
+
   /**
     * If consumer gets some message from queue and according its correlation id it have no next action to be executed,
     * it will reschedule received message to be processed again (new lookup to [[routingMap]]) after given time period.
     * If no next action is found after second processing, received message is dropped with warning log and KO status.
     */
-  val retryDelay: FiniteDuration = 500 milliseconds
+  val retryDelay: FiniteDuration = 10 seconds
 
   /**
     * correlationId -> RequestWithCorrelation(session, next, ...)
@@ -63,7 +71,13 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
     * @return returns true, if message was delivered to right action. False is returned, if no such request exist in [[routingMap]], which have same correlation id a received data
     */
   private def handleReceivedData(receivedData: AmqpConsumerCorrelation.ReceivedData): Boolean = {
-    val value: Option[AmqpConsumerCorrelation.RequestWithCorrelation] = routingMap.remove(receivedData.correlationId)
+    val receivedCorrelationId = conv match {
+      case None =>
+        receivedData.correlationId
+      case Some(x) =>
+        x.apply(receivedData)
+    }
+    val value: Option[AmqpConsumerCorrelation.RequestWithCorrelation] = routingMap.remove(receivedCorrelationId)
     value match {
       case Some(req) => {
         deliveredCount += 1
@@ -75,9 +89,9 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
             req.session.set(AmqpPublisher.LAST_PUBLISHED_MESSAGE_CORRELATIONID_KEY, null)
         }
         val nextActor = req.nextAction
-        // TODO temporary solution for makeinf statuscode=200 only OK consumed messages
-        val statusCode = Try(receivedData.deliveredMsg.properties.getHeaders.get("statusCode").asInstanceOf[Int]).getOrElse(-1)
-        if (200 == statusCode) {
+        // TODO temporary solution for making statusCode=2XX only OK consumed messages. Messages without status codes will be now threated as OK messages
+        val statusCode = Try(receivedData.deliveredMsg.properties.getHeaders.get("statusCode").asInstanceOf[Int]).getOrElse(299)
+        if (200 >= statusCode && statusCode <= 299) {
           statsOk(newSession, req.requestTimestamp, receivedData.deliveredAt, getTitleForRequest(req.requestName))
         } else {
           statsNg(newSession, req.requestTimestamp, receivedData.deliveredAt, getTitleForRequest(req.requestName), Some(statusCode + ""), "Status code was " + statusCode)
@@ -92,6 +106,11 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
 
   log.info("Going to schedule TimeoutCheck to be executed each second.")
   val scheduleForTimeouts = context.system.scheduler.schedule(AmqpConsumerCorrelation.TIMEOUT_TRESHOLD, 1 seconds, self, AmqpConsumerCorrelation.TimeoutCheck)
+
+  /**
+    * Number of unexpected messages to be logged. This is counter, which will be decremented and stops on 0.
+    */
+  var unexpectedMsgLogged: Long = 7
 
   override def receive = super.receive.orElse {
     case AmqpConsumerCorrelation.TimeoutCheck =>
@@ -118,11 +137,24 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
       if (true == handleReceivedData(rd)) {
         log.info("Message delivered in repeated delivery. Response was received before actually awaited by scenario. Times for this response will be possibly wrong.")
       } else {
-        log.warn("Received message witch correlationId={}, which has not been requested. I have waited {} but no request came from scenario. Going to ignore that message. " +
-          "Possible problem is that you use same queue in multiple steps of scenario or your queue is spammed by some unrelated messages. msg={}.",
-          rd.correlationId.yellow.asInstanceOf[AnyRef], retryDelay.asInstanceOf[AnyRef], new String(rd.deliveredMsg.body).blue.asInstanceOf[AnyRef])
-        // Should I statsNg, when it is not KO for some step? Probably no.
-        //statsNg(null.asInstanceOf[Session], deliveredAt, nowMillis, "consumeSingleWithCorrelationId", None, "No request was made for received message with correlationId=\"" + correlationId + "\". See log for more info.")
+        if(new String(rd.deliveredMsg.body).contains("urn:be:bet:")) {
+          val h = rd.deliveredMsg.properties.getHeaders
+          println("unexpected:" + h.get("PayloadId"))
+        }
+        if(unexpectedMsgLogged > 0) {
+          val a = unexpectedMsgLogged match {
+            case 1 =>
+              "This is last warning! All subsequent warnings of this type will be suppressed. "
+            case _ =>
+              ""
+          }
+          log.warn("{}Received message witch correlationId={}, which has not been requested. I have waited {} but no request came from scenario. Going to ignore that message. " +
+            "Possible problem is that you use same queue in multiple steps of scenario or your queue is spammed by some unrelated messages. msg={}.",
+            a.asInstanceOf[AnyRef], rd.correlationId.yellow.asInstanceOf[AnyRef], retryDelay.asInstanceOf[AnyRef], new String(rd.deliveredMsg.body).blue.asInstanceOf[AnyRef])
+          // Should I statsNg, when it is not KO for some step? Probably no.
+          //statsNg(null.asInstanceOf[Session], deliveredAt, nowMillis, "consumeSingleWithCorrelationId", None, "No request was made for received message with correlationId=\"" + correlationId + "\". See log for more info.")
+          unexpectedMsgLogged -= 1
+        }
       }
 
     case AmqpConsumeRequest(req, session, next) =>
@@ -179,6 +211,8 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
   }
 
   override protected def shutdown(): Unit = {
+    context.become({ case _ => }, discardOld = true)
+
     scheduleForTimeouts.cancel()
 
     tagMap.foreach {
@@ -188,10 +222,11 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
         log.debug(s"Cancel consumer($tag)".yellow)
     }
 
-    context.become({ case _ => }, discardOld = true)
-
     // clean up routingMap and log statsNg for all waiting requests
     val shutdownTime = nowMillis
+    if(routingMap.nonEmpty) {
+      log.warn(s"There are still ${routingMap.size} requests in routingMap. They will be all finished as un-served due shutdown.")
+    }
     routingMap.foldLeft(Unit)((_, unservedRequest) => {
       val correlationId = unservedRequest._1
       val request: AmqpConsumerCorrelation.RequestWithCorrelation = unservedRequest._2
@@ -211,7 +246,10 @@ class AmqpConsumerCorrelation(actorName: String)(implicit _amqp: AmqpProtocol) e
 }
 
 object AmqpConsumerCorrelation {
-  def props(name: String, amqp: AmqpProtocol) = Props(classOf[AmqpConsumerCorrelation], name, amqp)
+  def props(name: String,
+            conv: Option[AmqpConsumerCorrelation.ReceivedData => String],
+            amqp: AmqpProtocol
+           ) = Props(classOf[AmqpConsumerCorrelation], name, conv, amqp)
 
   case class ReceivedData(deliveredAt: Long, correlationId: String, deliveredMsg: DeliveredMsg)
 
