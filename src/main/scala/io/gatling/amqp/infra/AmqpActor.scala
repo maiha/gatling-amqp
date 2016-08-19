@@ -1,8 +1,7 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
-import com.rabbitmq.client.Channel
-import com.rabbitmq.client.AlreadyClosedException
+import com.rabbitmq.client.{AlreadyClosedException, Channel}
 import io.gatling.amqp.config._
 import io.gatling.amqp.infra.AmqpActor.ConnectionClosed
 import io.gatling.core.akka.BaseActor

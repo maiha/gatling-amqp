@@ -5,8 +5,8 @@ import io.gatling.core.session.Expression
 
 // TODO: use (implicit configuration: GatlingConfiguration)
 class AmqpRequestBuilder(
-  requestName: Expression[String],
-  var _request: Option[AmqpRequest] = None
+                          val requestName: Expression[String],
+                          var _request: Option[AmqpRequest] = None
 ) extends Publishing with Consuming {
 
   def build: AmqpRequest = _request.getOrElse(throw new RuntimeException("No AmqpRequest Found"))

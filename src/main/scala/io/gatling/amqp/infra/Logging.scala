@@ -1,8 +1,8 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
-import pl.project13.scala.rainbow._
 import com.typesafe.scalalogging.LazyLogging
+import pl.project13.scala.rainbow._
 
 trait Logging extends Actor with LazyLogging {
   protected lazy val className = getClass.getSimpleName

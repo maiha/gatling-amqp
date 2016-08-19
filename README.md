@@ -25,6 +25,10 @@ scala> amqp.declare(queue("q3", durable = true)).run
 
 ## publish (normal)
 
+Publish is asynchronous step and does not block scenario until actual
+message is published. It can do publish with confirm mode turned on or
+off. It changes way of getting publish seq number and way of acknowledge
+from amqp server is done (sync or async).
 
 ```
   implicit val amqpProtocol: AmqpProtocol = amqp
@@ -103,6 +107,10 @@ scala> amqp.declare(queue("q3", durable = true)).run
 
 ## consume (auto acked)
 
+Consume is asynchronous operation which will start consumer on given
+queue, which will consume all messages which gets to the queue. It does
+not block scenario (it is async).
+
 
 ```
   implicit val amqpProtocol: AmqpProtocol = amqp
@@ -118,6 +126,38 @@ scala> amqp.declare(queue("q3", durable = true)).run
 ```
 
 - full code: src/test/scala/io/gatling/amqp/ConsumingSimulation.scala
+
+## consumeSingle
+
+Consume is blocking operation which will start consumer on given
+queue and wait until exactly one message is consumed. Message can be
+saved in session if needed and used later. Do not forget to drop it from
+session if no longer needed.
+
+- implementation is bit broken and unreliable when run more than few
+users in parallel
+
+
+```
+  implicit val amqpProtocol: AmqpProtocol = amqp
+    .host("amqp")
+    .port(5672)
+    .auth("guest", "guest")
+
+  val scn = scenario("AMQP Publish(ack)").exec {
+    amqp("Consume")
+      .consumeSingle("q1", saveResultToSession = true)
+      .exec(session => {
+        val msg = session(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY).asOption[DeliveredMsg]
+        println("Response=" + msg)
+        println("ResponseBody=" + msg.map(m => new String(m.getBody, "UTF-8")))
+        // drop possibly large response from session
+        session.set(AmqpConsumer.LAST_CONSUMED_MESSAGE_KEY, null)
+      })
+  }
+
+  setUp(scn.inject(atOnceUsers(1))).protocols(amqpProtocol)
+```
 
 ## consume (manual acked)
 
@@ -201,9 +241,8 @@ Benchmark
 Library
 =======
 
-- amqp-client-3.5.3
-- gatling-sbt-2.1.6 (to implement easily)
-- gatling-2.2.0-M3 (live with edge)
+- amqp-client-3.6.1 (3.5.1, 3.5.3 and 3.5.7 is also known to be working)
+- gatling-2.2.0-M3 (milestone version)
 
 
 TODO
@@ -214,6 +253,7 @@ TODO
 - make Builder mutable
 - mandatory
 - consume action (manual ack)
+- consume followed by publish and than pause will cause to report publish times containing also pause time (RpcSimmulation with pause after each publish shows it) 
 
 License
 =======

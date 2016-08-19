@@ -1,8 +1,5 @@
 package io.gatling.amqp.check
 
-import io.gatling.core.check.extractor.xpath.{ JdkXPathExtractorFactory, SaxonXPathExtractorFactory }
-import io.gatling.core.session.Expression
-
 // TODO: use Expression
 trait AmqpCheckSupport {
 

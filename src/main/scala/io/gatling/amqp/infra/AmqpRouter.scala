@@ -5,38 +5,32 @@ import akka.routing._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
+import io.gatling.core.result.writer.StatsEngine
 import io.gatling.core.session.Session
-import io.gatling.core.stats.StatsEngine
 
 import scala.collection.mutable
 import scala.util._
 
 class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends Actor with Logging {
-  private var publishers = Router(RoundRobinRoutingLogic(), Vector[Routee]())
+  private lazy val publishers: Router = {
+    var p = Router(RoundRobinRoutingLogic(), Vector[Routee]())
+    for (i <- 1 to amqp.connection.poolSize) {
+      val name = s"AmqpPublisher-$i"
+      p = p.addRoutee(context.actorOf(AmqpPublisher.props(name, amqp), name))
+    }
+    p
+  }
 
   // create one consumer for one session
-  private val consumerActors = mutable.HashMap[String, ActorRef]()  // UserId -> ref(AmqpConsumer)
+  private val consumerActors = mutable.HashMap[String, ActorRef]() // UserId -> ref(AmqpConsumer)
+
   private def consumerActorFor(session: Session): ActorRef = {
     val name = s"AmqpConsumer-user-${session.userId}"
-    consumerActors.getOrElseUpdate(name, {
-      log.trace("Going to create new amqp consumer actor with name ", name.asInstanceOf[AnyRef])
-      context.actorOf(AmqpConsumer.props(name, session, amqp), name)
-    })
+    consumerActors.getOrElseUpdate(session.userId, context.actorOf(AmqpConsumer.props(name, amqp), name))
   }
 
-  override def preStart(): Unit = {
-    super.preStart()
-  }
-
-  private def initializePublishersOnce(): Unit = {
-    if (publishers.routees.isEmpty) {
-      for(i <- 1 to amqp.connection.poolSize) { addPublisher(i) }
-    }
-  }
-
-  override def receive: Receive = {
+  def receive: Receive = {
     case m: AmqpPublishRequest =>
-      initializePublishersOnce()
       publishers.route(m, sender())
 
     case m: AmqpConsumeRequest =>
@@ -47,19 +41,9 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
 
     case m: WaitTermination =>
       consumerActorFor(m.session).forward(m)
-
-    case Terminated(ref) =>
-      publishers = publishers.removeRoutee(ref)
-  }
-
-  private def addPublisher(i: Int): Unit = {
-    val name = s"AmqpPublisher-$i"
-    val ref = context.actorOf(AmqpPublisher.props(name, amqp), name)
-    context watch ref
-    publishers = publishers.addRoutee(ref)
   }
 }
 
 object AmqpRouter {
-  def props(statsEngine : StatsEngine, amqp: AmqpProtocol) = Props(classOf[AmqpRouter], statsEngine, amqp)
+  def props(statsEngine: StatsEngine, amqp: AmqpProtocol) = Props(classOf[AmqpRouter], statsEngine, amqp)
 }

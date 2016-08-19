@@ -4,16 +4,23 @@ import akka.actor._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.action.{Action, ChainableAction}
+import io.gatling.amqp.infra.Logging
+import io.gatling.core.action.Chainable
 import io.gatling.core.session.Session
-import io.gatling.core.util.NameGen
 
-class AmqpPublishAction(req: PublishRequest, val next: Action)(implicit amqp: AmqpProtocol) extends ChainableAction with NameGen {
+class AmqpPublishAction(req: PublishRequest, val next: ActorRef)(implicit amqp: AmqpProtocol) extends Chainable with Logging {
   override def execute(session: Session): Unit = {
-    amqp.router ! AmqpPublishRequest(req, session)
+    req match {
+      case req: PublishRequestAsync =>
+        amqp.router ! AmqpPublishRequest(req, session)
+        next ! session
 
-    next ! session
+      case req: RpcCallRequest =>
+        amqp.router ! AmqpPublishRequest(req, session, Some(next))
+    }
   }
+}
 
-  override def name: String = genName("AmqpPublishAction")
+object AmqpPublishAction {
+  def props(req: PublishRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpPublishAction], req, next, amqp)
 }

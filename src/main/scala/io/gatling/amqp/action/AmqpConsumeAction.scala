@@ -10,10 +10,13 @@ import io.gatling.core.util.NameGen
 
 class AmqpConsumeAction(req: ConsumeRequest, val next: Action)(implicit amqp: AmqpProtocol) extends ChainableAction with NameGen {
   override def execute(session: Session): Unit = {
-    amqp.router ! AmqpConsumeRequest(req, session)
-
-    next ! session
+    // router creates actors (AmqpConsumer) per session after receiving AmqpConsumeRequest.
+    amqp.router ! AmqpConsumeRequest(req, session, next)
   }
 
   override def name: String = genName("AmqpConsumeAction")
+}
+
+object AmqpConsumeAction {
+  def props(req: ConsumeRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpConsumeAction], req, next, amqp)
 }
