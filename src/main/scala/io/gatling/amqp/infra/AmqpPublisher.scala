@@ -9,7 +9,8 @@ import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
 import io.gatling.core.session.{Expression, Session}
-import io.gatling.core.util.TimeHelper.nowMillis
+import io.gatling.commons.util.TimeHelper.nowMillis
+import io.gatling.core.action.Action
 import pl.project13.scala.rainbow.Rainbow._
 
 import scala.util._
@@ -45,7 +46,7 @@ class AmqpPublisher(actorName: String)(implicit amqp: AmqpProtocol) extends Amqp
       localPublishSeqNoCounter.getAndIncrement
   }
 
-  def saveCorrelationIdInSessionAndResumeNext(r: RpcCallRequest, session: Session, next: ActorRef, propertiesEvaluated: BasicProperties): Unit = {
+  def saveCorrelationIdInSessionAndResumeNext(r: RpcCallRequest, session: Session, next: Action, propertiesEvaluated: BasicProperties): Unit = {
     log.trace("Saving correlationId-> {}={} and going to execute next step.",
       AmqpPublisher.LAST_PUBLISHED_MESSAGE_CORRELATIONID_KEY.blue.asInstanceOf[AnyRef],
       propertiesEvaluated.getCorrelationId.red.asInstanceOf[AnyRef])

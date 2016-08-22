@@ -6,7 +6,7 @@ scalacOptions := Seq(
   "-encoding", "UTF-8", "-target:jvm-1.7", "-deprecation",
   "-feature", "-unchecked", "-language:implicitConversions", "-language:postfixOps")
 
-val gatlingVersion = "2.2.0"
+val gatlingVersion = "2.2.2"
 
 xerial.sbt.Sonatype.sonatypeRootSettings
 
@@ -40,5 +40,5 @@ pomExtra := (
 
 libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
-libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.6.1"
+libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.6.5"
 libraryDependencies += "pl.project13.scala" %% "rainbow" % "0.2"

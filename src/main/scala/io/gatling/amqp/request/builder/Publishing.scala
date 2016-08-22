@@ -4,7 +4,7 @@ import com.rabbitmq.client.AMQP.BasicProperties
 import io.gatling.amqp.data._
 import io.gatling.core.Predef._
 import io.gatling.core.session.Expression
-import io.gatling.core.util.TimeHelper
+import io.gatling.commons.util.TimeHelper
 
 import scala.collection.JavaConversions._
 

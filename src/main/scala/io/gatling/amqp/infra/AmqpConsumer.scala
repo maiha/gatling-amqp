@@ -9,7 +9,8 @@ import io.gatling.amqp.data._
 import io.gatling.amqp.event._
 import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
 import io.gatling.core.session.Session
-import io.gatling.core.util.TimeHelper.nowMillis
+import io.gatling.commons.util.TimeHelper.nowMillis
+import io.gatling.core.action.Action
 import pl.project13.scala.rainbow._
 
 import scala.util._
@@ -87,7 +88,7 @@ class AmqpConsumer(actorName: String)(implicit _amqp: AmqpProtocol) extends Amqp
     * @param session
     * @param next
     */
-  protected def consumeSingle(req: ConsumeSingleMessageRequest, session: Session, next: ActorRef): Unit = {
+  protected def consumeSingle(req: ConsumeSingleMessageRequest, session: Session, next: Action): Unit = {
     val startAt = nowMillis
     val getSingle: GetResponse = channel.basicGet(req.queueName, req.autoAck)
 

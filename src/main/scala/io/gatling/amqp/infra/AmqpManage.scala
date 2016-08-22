@@ -7,7 +7,7 @@ import com.typesafe.scalalogging.Logger
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.infra.AmqpManage.handleExceptions
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Try}

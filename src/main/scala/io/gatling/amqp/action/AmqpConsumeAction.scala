@@ -18,5 +18,5 @@ class AmqpConsumeAction(req: ConsumeRequest, val next: Action)(implicit amqp: Am
 }
 
 object AmqpConsumeAction {
-  def props(req: ConsumeRequest, next: ActorRef, amqp: AmqpProtocol) = Props(classOf[AmqpConsumeAction], req, next, amqp)
+  def props(req: ConsumeRequest, next: Action, amqp: AmqpProtocol) = Props(classOf[AmqpConsumeAction], req, next, amqp)
 }

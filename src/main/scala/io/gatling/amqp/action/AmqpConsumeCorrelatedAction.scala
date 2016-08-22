@@ -5,21 +5,26 @@ import io.gatling.amqp.config.AmqpProtocol
 import io.gatling.amqp.data.{ConsumeRequest, ConsumeSingleMessageRequest}
 import io.gatling.amqp.event.{AmqpConsumeRequest, AmqpSingleConsumerPerStepRequest}
 import io.gatling.amqp.infra.{AmqpConsumerCorrelation, Logging}
-import io.gatling.core.action.Chainable
+import io.gatling.core.action.{Action, ActorDelegatingAction, ChainableAction, ExitableAction}
 import io.gatling.core.session.Session
+import io.gatling.core.stats.StatsEngine
 
 /**
   * Created by Ľubomír Varga on 20.5.2016.
   */
 class AmqpConsumeCorrelatedAction(req: ConsumeRequest,
-                                  val next: ActorRef,
+                                  val next: Action,
                                   val conv: Option[AmqpConsumerCorrelation.ReceivedData => String]
-                                 )(implicit amqp: AmqpProtocol) extends Chainable with Logging {
-  val consumerActorForCorrelationId: ActorRef = {
+                                 )(implicit amqp: AmqpProtocol) extends ChainableAction with Logging {
+
+  class ConsumerActorForCorrelationId(
+                                       name: String, val statsEngine: StatsEngine, val next: Action, actor: ActorRef
+                                     ) extends ActorDelegatingAction(name, actor) with ExitableAction
+
+  val consumerActorForCorrelationId: ConsumerActorForCorrelationId = new ConsumerActorForCorrelationId(
+    "AmqpConsumerCorrelation", null, null, context.actorOf(AmqpConsumerCorrelation.props(name, conv, amqp), name)
+  )
     // single actor for all users in this scenario step
-    val name = "AmqpConsumerCorrelation"
-    context.actorOf(AmqpConsumerCorrelation.props(name, conv, amqp), name)
-  }
 
   override def execute(session: Session): Unit = {
     // router creates actors (AmqpConsumer) per session. For consuming message by correlation id, we need just one actor
@@ -39,7 +44,7 @@ class AmqpConsumeCorrelatedAction(req: ConsumeRequest,
 
 object AmqpConsumeCorrelatedAction {
   def props(req: ConsumeRequest,
-            next: ActorRef,
+            next: Action,
             conv: Option[AmqpConsumerCorrelation.ReceivedData => String],
             amqp: AmqpProtocol
            ) = Props(classOf[AmqpConsumeCorrelatedAction], req, next, conv, amqp)

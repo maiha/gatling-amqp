@@ -2,16 +2,17 @@ package io.gatling.amqp.infra
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.Props
 import com.rabbitmq.client.AMQP.BasicProperties
 import com.rabbitmq.client.{Consumer, Envelope, ShutdownSignalException}
 import io.gatling.amqp.config.AmqpProtocol
 import io.gatling.amqp.data.{AsyncConsumerRequest, ConsumeSingleMessageRequest}
 import io.gatling.amqp.event.{AmqpConsumeRequest, AmqpSingleConsumerPerStepRequest}
 import io.gatling.amqp.infra.AmqpConsumer.DeliveredMsg
+import io.gatling.commons.util.TimeHelper
+import io.gatling.commons.util.TimeHelper.nowMillis
 import io.gatling.core.Predef._
-import io.gatling.core.util.TimeHelper
-import io.gatling.core.util.TimeHelper.nowMillis
+import io.gatling.core.action.Action
 import pl.project13.scala.rainbow.Rainbow._
 
 import scala.collection.mutable
@@ -24,7 +25,7 @@ import scala.util.Try
 class AmqpConsumerCorrelation(actorName: String,
                               val conv: Option[AmqpConsumerCorrelation.ReceivedData => String]
                              )(implicit _amqp: AmqpProtocol) extends AmqpConsumerBase(actorName) {
-  if(conv.isDefined) {
+  if (conv.isDefined) {
     log.trace("This AmqpConsumerCorrelation instance will apply customCorrelationIdTransformer function to received data and " +
       "use result as correlation id of received message instead of its actual correlation id property this={}.", this)
   }
@@ -117,7 +118,7 @@ class AmqpConsumerCorrelation(actorName: String,
       routingMap.foreach {
         case (corrId, req) => {
           val diff = FiniteDuration.apply(now - req.requestTimestamp, TimeUnit.MILLISECONDS)
-          if(diff.gteq(AmqpConsumerCorrelation.TIMEOUT_TRESHOLD)) {
+          if (diff.gteq(AmqpConsumerCorrelation.TIMEOUT_TRESHOLD)) {
             log.warn("Timeout for corrId={}, has happened. diff={}.", corrId, diff)
             routingMap.remove(corrId)
             val newSession = req.session.markAsFailed
@@ -136,7 +137,7 @@ class AmqpConsumerCorrelation(actorName: String,
       if (true == handleReceivedData(rd)) {
         log.info("Message delivered in repeated delivery. Response was received before actually awaited by scenario. Times for this response will be possibly wrong.")
       } else {
-        if(unexpectedMsgLogged > 0) {
+        if (unexpectedMsgLogged > 0) {
           val a = unexpectedMsgLogged match {
             case 1 =>
               "This is last warning! All subsequent warnings of this type will be suppressed. "
@@ -219,7 +220,7 @@ class AmqpConsumerCorrelation(actorName: String,
 
     // clean up routingMap and log statsNg for all waiting requests
     val shutdownTime = nowMillis
-    if(routingMap.nonEmpty) {
+    if (routingMap.nonEmpty) {
       log.warn(s"There are still ${routingMap.size} requests in routingMap. They will be all finished as un-served due shutdown.")
     }
     routingMap.foldLeft(Unit)((_, unservedRequest) => {
@@ -250,7 +251,7 @@ object AmqpConsumerCorrelation {
 
   case class ReceivedDataRepeatedDelivery(receivedData: ReceivedData)
 
-  case class RequestWithCorrelation(session: Session, nextAction: ActorRef, saveResultToSession: Boolean, requestTimestamp: Long, requestName: String)
+  case class RequestWithCorrelation(session: Session, nextAction: Action, saveResultToSession: Boolean, requestTimestamp: Long, requestName: String)
 
   /**
     * Command which is used to check timeouts of pending consume requests.

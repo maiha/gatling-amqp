@@ -1,7 +1,7 @@
 package io.gatling.amqp.event
 
-import akka.actor.ActorRef
 import io.gatling.amqp.data._
+import io.gatling.core.action.Action
 import io.gatling.core.session.Session
 
 sealed trait AmqpAction
@@ -19,7 +19,7 @@ abstract class AmqpPublishEvent extends AmqpEvent {
   def action: AmqpAction = AmqpPublishAction
 }
 
-case class AmqpPublishRequest(req: PublishRequest, session: Session, next: Option[ActorRef] = None) extends AmqpPublishEvent
+case class AmqpPublishRequest(req: PublishRequest, session: Session, next: Option[Action] = None) extends AmqpPublishEvent
 
 case class AmqpPublishing(publisherName: String, no: Int, startedAt: Long, req: PublishRequest, session: Session) extends AmqpPublishEvent {
   def eventId: String = s"$publisherName-$no"
@@ -44,7 +44,7 @@ abstract class AmqpConsumevent extends AmqpEvent {
   def action: AmqpAction = AmqpConsumeAction
 }
 
-case class AmqpConsumeRequest(req: ConsumeRequest, session: Session, next: ActorRef) extends AmqpConsumevent
+case class AmqpConsumeRequest(req: ConsumeRequest, session: Session, next: Action) extends AmqpConsumevent
 
 /**
   * [[io.gatling.amqp.infra.AmqpRouter]] should create just single instance of [[io.gatling.amqp.infra.AmqpConsumerCorrelation]]
@@ -54,7 +54,7 @@ case class AmqpConsumeRequest(req: ConsumeRequest, session: Session, next: Actor
   * @param session
   * @param next
   */
-case class AmqpSingleConsumerPerStepRequest(req: ConsumeRequest, session: Session, next: ActorRef) extends AmqpConsumevent
+case class AmqpSingleConsumerPerStepRequest(req: ConsumeRequest, session: Session, next: Action) extends AmqpConsumevent
 
 case class AmqpConsuming(consumerName: String, no: Int, startedAt: Long, req: ConsumeRequest, session: Session) extends AmqpConsumevent {
   def eventId: String = s"$consumerName-$no"
