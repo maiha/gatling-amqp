@@ -1,10 +1,10 @@
 package io.gatling.amqp.infra
 
 import akka.actor._
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.StrictLogging
 import pl.project13.scala.rainbow._
 
-trait Logging extends Actor with LazyLogging {
+trait Logging extends Actor with StrictLogging {
   protected lazy val className = getClass.getSimpleName
   protected val log = logger // gap between LazyLogging and ActorLogging
   protected def stopMessage: String = ""

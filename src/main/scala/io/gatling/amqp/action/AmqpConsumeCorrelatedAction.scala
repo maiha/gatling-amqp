@@ -8,6 +8,7 @@ import io.gatling.amqp.infra.{AmqpConsumerCorrelation, Logging}
 import io.gatling.core.action.{Action, ActorDelegatingAction, ChainableAction, ExitableAction}
 import io.gatling.core.session.Session
 import io.gatling.core.stats.StatsEngine
+import io.gatling.core.util.NameGen
 
 /**
   * Created by Ľubomír Varga on 20.5.2016.
@@ -15,16 +16,17 @@ import io.gatling.core.stats.StatsEngine
 class AmqpConsumeCorrelatedAction(req: ConsumeRequest,
                                   val next: Action,
                                   val conv: Option[AmqpConsumerCorrelation.ReceivedData => String]
-                                 )(implicit amqp: AmqpProtocol) extends ChainableAction with Logging {
+                                 )(implicit amqp: AmqpProtocol) extends Logging with ChainableAction with NameGen {
 
   class ConsumerActorForCorrelationId(
                                        name: String, val statsEngine: StatsEngine, val next: Action, actor: ActorRef
                                      ) extends ActorDelegatingAction(name, actor) with ExitableAction
 
-  val consumerActorForCorrelationId: ConsumerActorForCorrelationId = new ConsumerActorForCorrelationId(
-    "AmqpConsumerCorrelation", null, null, context.actorOf(AmqpConsumerCorrelation.props(name, conv, amqp), name)
-  )
+  val consumerActorForCorrelationId: ActorRef = {
     // single actor for all users in this scenario step
+    val name = "AmqpConsumerCorrelation"
+    context.actorOf(AmqpConsumerCorrelation.props(name, conv, amqp), name)
+  }
 
   override def execute(session: Session): Unit = {
     // router creates actors (AmqpConsumer) per session. For consuming message by correlation id, we need just one actor
@@ -40,6 +42,8 @@ class AmqpConsumeCorrelatedAction(req: ConsumeRequest,
         amqp.router ! AmqpConsumeRequest(req, session, next)
     }
   }
+
+  override def name: String = this.genName("AmqpConsumeCorrelatedAction")
 }
 
 object AmqpConsumeCorrelatedAction {
