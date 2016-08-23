@@ -15,9 +15,9 @@ xerial.sbt.Sonatype.sonatypeRootSettings
 
 publishMavenStyle := true
 // just run sbt publish; (or experiment with sbt publishLocaly)
-publishTo := Some(Resolver.file("file",  new File(Path.userHome.absolutePath+"/.m2/repository")))
+publishTo := Some(Resolver.file("file", new File(Path.userHome.absolutePath + "/.m2/repository")))
 
-version := "0.6-SNAPSHOT"
+version := "0.7-SNAPSHOT"
 organization := "sc.ala"
 name := "gatling-amqp"
 description := "Gatling AMQP support"
@@ -31,10 +31,15 @@ pomExtra := (
           <name>Kazunori Nishi</name>
           <url>https://github.com/maiha</url>
         </developer>
+        <developer>
+          <id>LuboVarga</id>
+          <name>Ľubomír Varga</name>
+          <url>https://github.com/LuboVarga</url>
+        </developer>
       </developers>
       <scm>
-        <url>https://github.com/maiha/gatling-amqp</url>
-        <connection>scm:git:git@github.com:maiha/gatling-amqp.git</connection>
+        <url>https://github.com/LuboVarga/gatling-amqp</url>
+        <connection>scm:git:git@github.com:LuboVarga/gatling-amqp.git</connection>
       </scm>
 )
 
