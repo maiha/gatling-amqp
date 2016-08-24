@@ -23,7 +23,9 @@ object AmqpProtocol {
     def newComponents(system: ActorSystem, coreComponents: CoreComponents): AmqpProtocol => AmqpComponents = {
       amqpProtocol => {
         val amqpComponents = AmqpComponents(amqpProtocol)
-        amqpProtocol.warmUp(system, coreComponents.statsEngine, coreComponents.throttler)
+        val statsEngine: StatsEngine = coreComponents.statsEngine
+        amqpProtocol.setupVariables(system, statsEngine)
+        amqpProtocol.warmUp(system, statsEngine, coreComponents.throttler)
         amqpComponents
       }
     }
@@ -31,7 +33,7 @@ object AmqpProtocol {
 
   def apply(conf: GatlingConfiguration, connection: Connection, preparings: List[AmqpChannelCommand]): AmqpProtocol = new AmqpProtocol(connection, preparings)
 
-  def apply(conf: GatlingConfiguration): AmqpProtocol = new AmqpProtocol(connection = null, preparings = null)
+  def apply(conf: GatlingConfiguration): AmqpProtocol = AmqpProtocol(connection = null, preparings = null)
 }
 
 /**
@@ -74,7 +76,6 @@ case class AmqpProtocol(
    */
   def warmUp(system: ActorSystem, statsEngine: StatsEngine, throttler: Throttler): Unit = {
     logger.info("amqp: warmUp start")
-    setupVariables(system, statsEngine)
     awaitPreparation()
   }
 

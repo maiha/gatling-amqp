@@ -24,8 +24,6 @@ trait AmqpVariables { this: AmqpProtocol =>
   def router: ActorRef    = _router.getOrElse{ throw new RuntimeException("router is not defined yet") }
   def tracer: ActorRef    = _tracer.getOrElse{ throw new RuntimeException("tracer is not defined yet") }
 
-  def statsEngine : StatsEngine = _stats .getOrElse{ throw new RuntimeException("StatsEngine is not defined yet") }
-
   protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
     _system = Some(system)
     _stats  = Some(statsEngine)
