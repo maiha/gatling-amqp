@@ -17,7 +17,7 @@ Usage
 ## handy cli (use AmqpProtocol as console utility) [0.6 feature]
 
 
-```
+```scala
 scala> import io.gatling.amqp.Predef._
 scala> amqp.declare(queue("q3", durable = true)).run
 ```
@@ -26,7 +26,7 @@ scala> amqp.declare(queue("q3", durable = true)).run
 ## publish (normal)
 
 
-```
+```scala
   implicit val amqpProtocol: AmqpProtocol = amqp
     .host("localhost")
     .port(5672)
@@ -48,7 +48,7 @@ scala> amqp.declare(queue("q3", durable = true)).run
 - PublishRequest.persistent make request DeliveryMode(2)
 - known issue: persistent reset request's properties
 
-```
+```scala
   val req = PublishRequest("q1", payload = "{foo:1}").persistent
 ```
 
@@ -57,7 +57,7 @@ scala> amqp.declare(queue("q3", durable = true)).run
 - set "confirmMode()" in protocol that invokes "channel.confirmSelect()"
 
 
-```
+```scala
   implicit val amqpProtocol: AmqpProtocol = amqp
     .host("localhost")
     .port(5672)
@@ -76,7 +76,7 @@ scala> amqp.declare(queue("q3", durable = true)).run
 
 ## declare queues
 
-```
+```scala
   implicit val amqpProtocol: AmqpProtocol = amqp
     .host("localhost")
     .port(5672)
@@ -87,7 +87,7 @@ scala> amqp.declare(queue("q3", durable = true)).run
 ## declare exchange and binding
 
 
-```
+```scala
   val x = exchange("color", "direct", autoDelete = false)
   val q = queue("orange")
   implicit val amqpProtocol: AmqpProtocol = amqp
@@ -104,7 +104,7 @@ scala> amqp.declare(queue("q3", durable = true)).run
 ## consume (auto acked)
 
 
-```
+```scala
   implicit val amqpProtocol: AmqpProtocol = amqp
     .host("amqp")
     .port(5672)
@@ -129,7 +129,7 @@ Run
 
 ## sbt directly
 
-```
+```bash
 % sbt
 > testOnly io.gatling.amqp.PublishingSimulation
 
@@ -141,7 +141,7 @@ Run
 
 ## shell script to store gatling stdout logs and simulation sources
 
-```
+```bash
 % ./run p foo
 ```
 
