@@ -7,7 +7,7 @@
     <packaging>jar</packaging>
     <description>Gatling AMQP support</description>
     <url>https://github.com/maiha/gatling-amqp</url>
-    <version>0.8888888888888888888888888888888888888888888888888888888888888888888888888888888888888888</version>
+    <version>0.8</version>
     <licenses>
         <license>
             <name>MIT License</name>
