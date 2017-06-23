@@ -1,5 +1,7 @@
 package io.gatling.amqp.config
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import akka.actor._
 import io.gatling.amqp.infra._
 import io.gatling.core.stats.StatsEngine
@@ -17,6 +19,7 @@ trait AmqpVariables { this: AmqpProtocol =>
   private var _router: Option[ActorRef]    = None
   private var _tracer: Option[ActorRef]    = None
   private var _stats : Option[StatsEngine] = None
+  private var initialized = new AtomicBoolean(false)
 
   def system: ActorSystem = _system.getOrElse{ throw new RuntimeException("ActorSystem is not defined yet") }
   def manage: ActorRef    = _manage.getOrElse{ throw new RuntimeException("manage is not defined yet") }
@@ -25,11 +28,15 @@ trait AmqpVariables { this: AmqpProtocol =>
   def tracer: ActorRef    = _tracer.getOrElse{ throw new RuntimeException("tracer is not defined yet") }
 
   protected def setupVariables(system: ActorSystem, statsEngine: StatsEngine): Unit = {
-    _system = Some(system)
-    _stats  = Some(statsEngine)
-    _manage = Some(system.actorOf(AmqpManage.props(statsEngine, this), "AmqpManage"))
-    _nacker = Some(system.actorOf(AmqpNacker.props(statsEngine, this), "AmqpNacker"))
-    _router = Some(system.actorOf(AmqpRouter.props(statsEngine, this), "AmqpRouter"))
-    _tracer = Some(system.actorOf(AmqpTracer.props(statsEngine, this), "AmqpTracer"))
+    if(this.initialized.getAndSet(true)) {
+      // weird single time initialization hack. It is trigerred when there are more exchanges used in single simulation.
+    } else {
+      _system = Some(system)
+      _stats = Some(statsEngine)
+      _manage = Some(system.actorOf(AmqpManage.props(statsEngine, this), "AmqpManage"))
+      _nacker = Some(system.actorOf(AmqpNacker.props(statsEngine, this), "AmqpNacker"))
+      _router = Some(system.actorOf(AmqpRouter.props(statsEngine, this), "AmqpRouter"))
+      _tracer = Some(system.actorOf(AmqpTracer.props(statsEngine, this), "AmqpTracer"))
+    }
   }
 }
