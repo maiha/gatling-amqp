@@ -42,9 +42,9 @@
         <java.target.version>1.8</java.target.version>
         <java.xms>1024m</java.xms>
         <java.xmx>2048m</java.xmx>
-        <artifactory.url>https://myArtifactoryHostname/artifactory</artifactory.url>
-        <snapshot.distribution.repo>${artifactory.url}/libs-snapshot-local</snapshot.distribution.repo>
-        <release.distribution.repo>${artifactory.url}/libs-release-local</release.distribution.repo>
+        <maven.repo.url>https://myArtifactoryHostname/artifactoryOrNexus</maven.repo.url>
+        <snapshot.distribution.repo>${maven.repo.url}/snapshots</snapshot.distribution.repo>
+        <release.distribution.repo>${maven.repo.url}/releases</release.distribution.repo>
     </properties>
     <dependencies>
         <dependency>
