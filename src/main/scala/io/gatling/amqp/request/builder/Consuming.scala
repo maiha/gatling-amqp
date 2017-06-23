@@ -36,7 +36,7 @@ trait Consuming { this: AmqpRequestBuilder =>
                     saveResultToSession: Boolean = false,
                     correlationId: Expression[String] = null,
                     customCorrelationIdTransformer: AmqpConsumerCorrelation.ReceivedData => String = null
-                   ): AmqpRequestBuilder =
+                   ): AmqpRequestBuilder = {
     consume(ConsumeSingleMessageRequest(this.requestName,
       queueName,
       autoAck = autoAck,
@@ -44,6 +44,7 @@ trait Consuming { this: AmqpRequestBuilder =>
       correlationId = Option(correlationId),
       customCorrelationIdTransformer = Option(customCorrelationIdTransformer)
     ))
+  }
 
   /**
     * Counterpart for [[Publishing.publishRpcCall()]]. This request will automatically use correlation id defined in session under

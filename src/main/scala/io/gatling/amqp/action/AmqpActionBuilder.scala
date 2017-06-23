@@ -6,8 +6,8 @@ import io.gatling.amqp.request.builder._
 import io.gatling.core.action.Action
 import io.gatling.core.action.builder.ActionBuilder
 import io.gatling.core.protocol.ProtocolComponentsRegistry
-import io.gatling.core.util.NameGen
 import io.gatling.core.structure.ScenarioContext
+import io.gatling.core.util.NameGen
 
 class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: AmqpProtocol) extends ActionBuilder with NameGen {
   private def components(protocolComponentsRegistry: ProtocolComponentsRegistry) = protocolComponentsRegistry.components(AmqpProtocol.AmqpProtocolKey)
@@ -20,7 +20,12 @@ class AmqpActionBuilder(amqpRequestBuilder: AmqpRequestBuilder)(implicit amqp: A
       case req: PublishRequest =>
         new AmqpPublishAction(req, next)
       case req: ConsumeRequest =>
-        new AmqpConsumeAction(req, next)
+        req match {
+          case reqWithCorr: ConsumeSingleMessageRequest =>
+            new AmqpConsumeCorrelatedAction(reqWithCorr, next, reqWithCorr.customCorrelationIdTransformer)
+          case _ =>
+            new AmqpConsumeAction(req, next)
+        }
     }
   }
 }

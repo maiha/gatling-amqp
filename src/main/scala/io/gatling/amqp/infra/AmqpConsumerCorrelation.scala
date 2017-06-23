@@ -162,13 +162,13 @@ class AmqpConsumerCorrelation(actorName: String,
           throw new RuntimeException("This actor is not right one for this type of command")
 
         case req: ConsumeSingleMessageRequest if req.correlationId.isDefined =>
-          log.warn("Check amqp plugin code! Going to correctly continue, but...")
+          log.warn("Check amqp plugin code! Going to correctly continue, but this request has been received probably by random instance of actor which is NOT \"singleton\" actor for whole step, so it will receive random message and tryies to corelate it.")
           self ! AmqpSingleConsumerPerStepRequest(req, session, next)
       }
 
     case AmqpSingleConsumerPerStepRequest(req, session, next) =>
       val requestTimestamp = nowMillis
-      // TODO implement
+      // TODO implement. <= what implement? It is not finished yet?
       req match {
         case req: AsyncConsumerRequest =>
           throw new RuntimeException("This actor is not right one for this type of command")
@@ -242,6 +242,9 @@ class AmqpConsumerCorrelation(actorName: String,
 }
 
 object AmqpConsumerCorrelation {
+  /**
+    * @note [[AmqpConsumerCorrelation]] actor should be spawned only one per single step!
+    */
   def props(name: String,
             conv: Option[AmqpConsumerCorrelation.ReceivedData => String],
             amqp: AmqpProtocol
