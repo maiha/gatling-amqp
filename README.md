@@ -36,24 +36,16 @@ from amqp server is done (sync or async).
     .port(5672)
     // .vhost("/")
     .auth("guest", "guest")
-    .poolSize(10)
+    .poolSize(10)    
 
-  val req = PublishRequest("q1", payload = "{foo:1}")
+  val body = "{foo:1}")
+  val queueName = "myQueue"
 
   val scn = scenario("AMQP Publish").repeat(1000) {
-    exec(amqp("Publish").publish(req))
+    exec(amqp("Publish").publish(queueName, body = Right(body)))
   }
 
   setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
-```
-
-## publish (with persistent)
-
-- PublishRequest.persistent make request DeliveryMode(2)
-- known issue: persistent reset request's properties
-
-```
-  val req = PublishRequest("q1", payload = "{foo:1}").persistent
 ```
 
 ## publish (with confirmation)
@@ -69,10 +61,11 @@ from amqp server is done (sync or async).
     .poolSize(10)
     .confirmMode()
 
-  val req = PublishRequest("q1", payload = "{foo:1}")
+  val body = "{foo:1}")
+  val queueName = "myQueue"
 
   val scn = scenario("AMQP Publish(ack)").repeat(1000) {
-    exec(amqp("Publish").publish(req))
+    exec(amqp("Publish").publish(queueName, body = body))
   }
 
   setUp(scn.inject(rampUsers(10) over (1 seconds))).protocols(amqpProtocol)
