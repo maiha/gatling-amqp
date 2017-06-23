@@ -24,9 +24,24 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
   // create one consumer for one session
   private val consumerActors = mutable.HashMap[String, ActorRef]() // UserId -> ref(AmqpConsumer)
 
-  private def consumerActorFor(session: Session): ActorRef = {
+  /**
+    *
+    * @param session             session for which consumer is beeing find
+    * @param correlationConsumer if true, destination will be [[AmqpConsumerCorrelation]]. Otherwise [[AmqpConsumer]] instance.
+    * @return right consumer for given session and type of consuming (with or without correlation id provided)
+    */
+  private def consumerActorFor(session: Session, correlationConsumer: Boolean): ActorRef = {
     val name = s"AmqpConsumer-user-${session.userId}"
-    consumerActors.getOrElseUpdate(name, context.actorOf(AmqpConsumer.props(name, amqp), name))
+    def newActor = {
+      if(correlationConsumer) {
+        // by default, correlationId from message is taken. So default is something like:
+        // val aaa: _root_.scala.Option[(_root_.io.gatling.amqp.infra.AmqpConsumerCorrelation.ReceivedData) => _root_.scala.Predef.String] = Some((rd) => rd.correlationId)
+        AmqpConsumerCorrelation.props(name, None, amqp)
+      } else {
+        AmqpConsumer.props(name, amqp)
+      }
+    }
+    consumerActors.getOrElseUpdate(name, context.actorOf(newActor, name))
   }
 
   override def receive: Receive = {
@@ -34,13 +49,23 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
       publishers.route(m, sender())
 
     case m: AmqpConsumeRequest =>
-      consumerActorFor(m.session).forward(m)
+      m.req match {
+        case _: AsyncConsumerRequest =>
+          consumerActorFor(m.session, false).forward(m)
+        case req:ConsumeSingleMessageRequest if req.correlationId.isEmpty =>
+          consumerActorFor(m.session, false).forward(m)
+        case req:ConsumeSingleMessageRequest if req.correlationId.isDefined =>
+          // req.correlationId is used to get correlation id from session. To match incoming message, have a look at consumerActorFor method.
+          consumerActorFor(m.session, true).forward(m)
+      }
 
     case m: WaitTermination if consumerActors.isEmpty =>
       sender() ! Success("no consumers")
 
     case m: WaitTermination =>
-      consumerActorFor(m.session).forward(m)
+      // TODO sending termination to both actors and it is likely that one of them does not exist! Just waste of spawning+terminating actor
+      consumerActorFor(m.session, true).forward(m)
+      consumerActorFor(m.session, false).forward(m)
   }
 }
 
