@@ -31,7 +31,7 @@ class AmqpRouter(statsEngine: StatsEngine)(implicit amqp: AmqpProtocol) extends 
     * @return right consumer for given session and type of consuming (with or without correlation id provided)
     */
   private def consumerActorFor(session: Session, correlationConsumer: Boolean): ActorRef = {
-    val name = s"AmqpConsumer-user-${session.userId}"
+    val name = s"AmqpConsumer-user-${session.userId}-${correlationConsumer}"
     def newActor = {
       if(correlationConsumer) {
         // by default, correlationId from message is taken. So default is something like:
