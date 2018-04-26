@@ -47,3 +47,7 @@ libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % g
 libraryDependencies += "io.gatling"            % "gatling-test-framework"    % gatlingVersion
 libraryDependencies += "com.rabbitmq" % "amqp-client" % "3.5.3"
 libraryDependencies += "pl.project13.scala" %% "rainbow" % "0.2"
+
+// for the gatling lib
+assemblyOption in assembly := (assemblyOption in assembly).value
+    .copy(includeScala = false)

@@ -10,6 +10,18 @@ Gatling AMQP support
     - but using 'io.gatling.amqp' for FQCN to deal with 'private[gatling]', sorry.
 - inspired by https://github.com/fhalim/gatling-rabbitmq (thanks!)
 
+Installation
+============
+
+Locally, build and add the plugin into the lib directory of Gatling home.
+
+    Checkout the code, and build the plugin using sbt
+
+$ sbt assembly
+
+    Copy the generated jar into the Gatling library directory
+
+$ cp target/scala-2.11/gatling-amqp-assembly-{VERSION}.jar ${GATLING_HOME}/lib
 
 Usage
 =====
