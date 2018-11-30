@@ -4,7 +4,7 @@ import akka.actor._
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 import pl.project13.scala.rainbow._
 
 import scala.collection.mutable

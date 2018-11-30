@@ -6,12 +6,9 @@ scalacOptions := Seq(
   "-encoding", "UTF-8", "-target:jvm-1.7", "-deprecation",
   "-feature", "-unchecked", "-language:implicitConversions", "-language:postfixOps")
 
-val gatlingVersion = "2.2.0-M3"
+val gatlingVersion = "2.2.5"
 
 xerial.sbt.Sonatype.sonatypeRootSettings
-
-// Maven Publishing
-// http://www.scala-sbt.org/0.13/docs/Using-Sonatype.html
 
 publishMavenStyle := true
 publishTo := {
@@ -25,7 +22,7 @@ publishTo := {
 version := "0.6-SNAPSHOT"
 organization := "sc.ala"
 name := "gatling-amqp"
-description := "Gatling AMQP support"
+description := "Gatling AMQP unofficial support"
 homepage := Some(url("https://github.com/maiha/gatling-amqp"))
 licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php"))
 
@@ -36,10 +33,15 @@ pomExtra := (
           <name>Kazunori Nishi</name>
           <url>https://github.com/maiha</url>
         </developer>
+       <developer>
+         <id>dieselr</id>
+         <name>DieselR</name>
+         <url>https://github.com/dieselr</url>
+       </developer>
       </developers>
       <scm>
-        <url>https://github.com/maiha/gatling-amqp</url>
-        <connection>scm:git:git@github.com:maiha/gatling-amqp.git</connection>
+        <url>https://github.com/dieselr/gatling-amqp</url>
+        <connection>scm:git:git@github.com:dieselr/gatling-amqp.git</connection>
       </scm>
 )
 

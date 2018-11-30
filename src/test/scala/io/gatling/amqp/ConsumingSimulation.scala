@@ -14,7 +14,10 @@ class ConsumingSimulation extends Simulation {
     .auth("guest", "guest")
 
   val scn = scenario("AMQP Consume").exec {
-    amqp("Consume").consume("q1", autoAck = true)
+    amqp("Consume").consume(
+      session =>
+        ConsumeRequest("q1" , autoAck = true)
+    )
   }
 
   setUp(scn.inject(atOnceUsers(1))).protocols(amqpProtocol)

@@ -7,7 +7,7 @@ import io.gatling.amqp.config._
 import io.gatling.amqp.data._
 import io.gatling.amqp.event._
 import io.gatling.core.session.Session
-import io.gatling.core.util.TimeHelper.nowMillis
+import io.gatling.commons.util.ClockSingleton.nowMillis
 import pl.project13.scala.rainbow._
 
 import scala.collection.mutable

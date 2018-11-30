@@ -3,7 +3,7 @@ package io.gatling.amqp.infra
 import akka.actor.{ActorRef, Props}
 import io.gatling.amqp.config._
 import io.gatling.amqp.data._
-import io.gatling.core.result.writer.StatsEngine
+import io.gatling.core.stats.StatsEngine
 
 import scala.collection.JavaConversions._
 
